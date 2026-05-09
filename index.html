@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌾 AI KrishiSahyogi - Smart Farming Crop Guide</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌾 AI KrishiSahyogi</h1>
+            <p>Smart Farming Crop Recommendation System</p>
+        </div>
+
+        <div class="card">
+            <h2>Farm Details</h2>
+            <form id="farmForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="location">Location</label>
+                        <select id="location" required>
+                            <option value="">Select Location</option>
+                            <option value="Punjab">Punjab</option>
+                            <option value="Haryana">Haryana</option>
+                            <option value="Uttar Pradesh">Uttar Pradesh</option>
+                            <option value="Maharashtra">Maharashtra</option>
+                            <option value="Karnataka">Karnataka</option>
+                            <option value="Tamil Nadu">Tamil Nadu</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="soil">Soil Type</label>
+                        <select id="soil" required>
+                            <option value="">Select Soil Type</option>
+                            <option value="Clay">Clay</option>
+                            <option value="Loamy">Loamy</option>
+                            <option value="Sandy">Sandy</option>
+                            <option value="Silt">Silt</option>
+                            <option value="Black Cotton">Black Cotton</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="season">Season</label>
+                        <select id="season" required>
+                            <option value="">Select Season</option>
+                            <option value="Kharif (Monsoon)">Kharif (Monsoon)</option>
+                            <option value="Rabi (Winter)">Rabi (Winter)</option>
+                            <option value="Zaid (Summer)">Zaid (Summer)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="water">Water Source</label>
+                        <select id="water">
+                            <option value="Rain-fed">Rain-fed</option>
+                            <option value="Irrigation">Irrigation</option>
+                            <option value="Drip System">Drip System</option>
+                            <option value="Tube Well">Tube Well</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="farmSize">Farm Size (acres)</label>
+                        <input type="number" id="farmSize" placeholder="Enter farm size">
+                    </div>
+                    <div class="form-group">
+                        <label for="budget">Budget (₹)</label>
+                        <input type="number" id="budget" placeholder="Enter budget">
+                    </div>
+                </div>
+                <button type="submit" class="btn">🤖 Get AI Recommendation</button>
+            </form>
+        </div>
+
+        <div class="card results" id="results">
+            <div class="tabs">
+                <button class="tab active" onclick="showTab(event, 'crops')">🌱 Crop Suggestions</button>
+                <button class="tab" onclick="showTab(event, 'market')">💰 Market Prices</button>
+                <button class="tab" onclick="showTab(event, 'weather')">🌤️ Weather Insights</button>
+            </div>
+
+            <div id="crops" class="tab-content active">
+                <h3>Recommended Crops</h3>
+                <div id="cropsList"></div>
+            </div>
+
+            <div id="market" class="tab-content">
+                <h3>Market Analysis</h3>
+                <div id="marketInfo"></div>
+            </div>
+
+            <div id="weather" class="tab-content">
+                <h3>Weather Insights</h3>
+                <div id="weatherInfo"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
