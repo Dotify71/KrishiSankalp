@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Official AI-powered Smart Farming Crop Recommendation System for Indian Agriculture.">
+    <meta name="keywords" content="agriculture, farming, crop recommendation, ai farming, agriculture portal">
+    <meta name="author" content="Ministry of Agriculture & Farmers Welfare">
+    <title>AI KrishiSahyogi - Smart Farming Crop Guide</title>
+    <link rel="stylesheet" href="style.css?v=2">
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/css/tom-select.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.2.2/dist/js/tom-select.complete.min.js"></script>
+</head>
+<body>
+    <div class="gov-banner">
+        <span>🇮🇳 Government of India | Ministry of Agriculture &amp; Farmers Welfare</span>
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <select id="langToggle" style="padding: 3px 8px; border-radius: 3px; background: transparent; color: white; border: 1px solid white; cursor: pointer; font-size: 0.9em;">
+                <option value="en" style="color: black;">English</option>
+                <option value="hi" style="color: black;">हिन्दी</option>
+                <option value="pa" style="color: black;">ਪੰਜਾਬੀ</option>
+                <option value="mr" style="color: black;">मराठी</option>
+            </select>
+            <span id="userProfile" style="display: none; align-items: center; gap: 8px;">
+                <img id="userPic" src="" alt="" style="width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff;">
+                <a href="/profile.html" id="userName" style="color: #fff; text-decoration: none; font-size: 0.9em; font-weight: 600;"></a>
+            </span>
+        </div>
+    </div>
+    <div class="container">
+        <div class="header">
+            <h1 id="titleText">AI KrishiSahyogi</h1>
+            <p id="subtitleText">Smart Farming Crop Recommendation System</p>
+        </div>
+
+        <div class="card">
+            <h2 data-i18n="farmDetails">Farm Details</h2>
+            <form id="farmForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="location" data-i18n="labelLocation">Location</label>
+                        <select id="location" required>
+                            <option value="">Loading locations...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="soil" data-i18n="labelSoil">Soil Type</label>
+                        <select id="soil" required>
+                            <option value="" data-i18n="soilPlaceholder">Select Soil Type</option>
+                            <option value="Alluvial Soil"    data-i18n="soil1">Alluvial Soil</option>
+                            <option value="Black Soil (Regur)" data-i18n="soil2">Black Soil (Regur)</option>
+                            <option value="Red and Yellow Soil" data-i18n="soil3">Red and Yellow Soil</option>
+                            <option value="Laterite Soil"   data-i18n="soil4">Laterite Soil</option>
+                            <option value="Arid/Desert Soil" data-i18n="soil5">Arid/Desert Soil</option>
+                            <option value="Saline and Alkaline Soil" data-i18n="soil6">Saline and Alkaline Soil</option>
+                            <option value="Peaty and Marshy Soil" data-i18n="soil7">Peaty and Marshy Soil</option>
+                            <option value="Forest and Mountain Soil" data-i18n="soil8">Forest and Mountain Soil</option>
+                            <option value="Sandy"           data-i18n="soil9">Sandy (Basic)</option>
+                            <option value="Clay"            data-i18n="soil10">Clay (Basic)</option>
+                            <option value="Loamy"           data-i18n="soil11">Loamy (Basic)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="season" data-i18n="labelSeason">Season</label>
+                        <select id="season" required>
+                            <option value="" data-i18n="seasonPlaceholder">Select Season</option>
+                            <optgroup data-i18n-group="groupAgri" label="Agricultural Seasons (Main)">
+                                <option value="Kharif (Monsoon)"  data-i18n="season1">Kharif (Monsoon)</option>
+                                <option value="Rabi (Winter)"     data-i18n="season2">Rabi (Winter)</option>
+                                <option value="Zaid (Summer)"     data-i18n="season3">Zaid (Summer)</option>
+                            </optgroup>
+                            <optgroup data-i18n-group="groupRitu" label="Traditional Indian Seasons (Ritu)">
+                                <option value="Vasant (Spring)"   data-i18n="season4">Vasant (Spring)</option>
+                                <option value="Grishma (Summer)"  data-i18n="season5">Grishma (Summer)</option>
+                                <option value="Varsha (Monsoon)"  data-i18n="season6">Varsha (Monsoon)</option>
+                                <option value="Sharad (Autumn)"   data-i18n="season7">Sharad (Autumn)</option>
+                                <option value="Hemant (Pre-Winter)" data-i18n="season8">Hemant (Pre-Winter)</option>
+                                <option value="Shishir (Winter)"  data-i18n="season9">Shishir (Winter)</option>
+                            </optgroup>
+                            <optgroup data-i18n-group="groupGeneral" label="General Seasons">
+                                <option value="Spring"  data-i18n="season10">Spring</option>
+                                <option value="Summer"  data-i18n="season11">Summer</option>
+                                <option value="Monsoon" data-i18n="season12">Monsoon</option>
+                                <option value="Autumn"  data-i18n="season13">Autumn</option>
+                                <option value="Winter"  data-i18n="season14">Winter</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="water" data-i18n="labelWater">Water Source</label>
+                        <select id="water" required>
+                            <option value="" data-i18n="waterPlaceholder">Select Water Source</option>
+                            <option value="Rainfed (Monsoon)"      data-i18n="water1">Rainfed (Monsoon)</option>
+                            <option value="Tube Well / Borewell"   data-i18n="water2">Tube Well / Borewell</option>
+                            <option value="Canal Irrigation"       data-i18n="water3">Canal Irrigation</option>
+                            <option value="River / Stream"         data-i18n="water4">River / Stream</option>
+                            <option value="Pond / Tank Irrigation" data-i18n="water5">Pond / Tank Irrigation</option>
+                            <option value="Drip / Sprinkler System" data-i18n="water6">Drip / Sprinkler System</option>
+                            <option value="Open Well"              data-i18n="water7">Open Well</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="farmSize" data-i18n="labelFarmSize">Farm Size (acres)</label>
+                        <input type="number" id="farmSize" data-i18n-placeholder="phFarmSize" placeholder="Enter farm size" min="0.1" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="budget" data-i18n="labelBudget">Budget (Rs)</label>
+                        <input type="number" id="budget" data-i18n-placeholder="phBudget" placeholder="Enter budget" min="1000" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn" data-i18n="btn">Get AI Recommendation</button>
+            </form>
+        </div>
+
+        <div class="card diagnosis-card">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 20px;">
+                <span style="font-size: 2em;">🔍</span>
+                <div style="text-align: left;">
+                    <h2 style="margin: 0;" data-i18n="headDiagnosis">AI Disease Diagnosis</h2>
+                    <p style="margin: 0; color: #555; font-size: 0.9em;" data-i18n="subDiagnosis">Identify crop diseases instantly using AI</p>
+                </div>
+            </div>
+            
+            <div class="diagnosis-upload" id="diagnosisUpload">
+                <input type="file" id="imageInput" accept="image/*" capture="environment" style="display: none;">
+                <button type="button" class="btn secondary" onclick="document.getElementById('imageInput').click()" data-i18n="btnUpload">📸 Take or Upload Photo</button>
+                <p style="margin-top: 10px; font-size: 0.85em; color: #666;" data-i18n="uploadHint">Works best with clear photos of leaves or stems</p>
+            </div>
+
+            <div id="diagnosisLoading" style="display: none; padding: 20px; text-align: center;">
+                <div class="spinner"></div>
+                <p data-i18n="analyzing">AI is analyzing your crop...</p>
+            </div>
+
+            <div id="diagnosisResult" style="display: none; margin-top: 20px; text-align: left; border-top: 1px solid #eee; padding-top: 20px;">
+                <div id="diagBadge" style="display: inline-block; padding: 5px 12px; border-radius: 20px; font-weight: bold; margin-bottom: 15px;"></div>
+                <h3 id="diagName" style="margin: 0 0 10px 0; color: #002244;"></h3>
+                <p id="diagConf" style="font-size: 0.9em; color: #666; margin-bottom: 15px;"></p>
+                
+                <div id="diagTreatment" style="background: #f1f8e9; padding: 15px; border-radius: 8px; border-left: 4px solid #2e7d32;">
+                    <h4 style="margin: 0 0 8px 0; color: #2e7d32;" data-i18n="headTreatment">Organic Treatment Plan:</h4>
+                    <div id="treatmentList" style="font-size: 0.95em; line-height: 1.5; color: #333;"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card results" id="results">
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
+                <button id="btnListen" style="background: #0055a4; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;" data-i18n="btnListen">🔊 Listen</button>
+                <button onclick="window.print()" style="background: #2E7D32; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;" data-i18n="btnPrint">🖨️ Print</button>
+            </div>
+            <div class="tabs">
+                <button class="tab active" onclick="showTab(event, 'crops')" data-i18n="tabCrops">Crop Suggestions</button>
+                <button class="tab" onclick="showTab(event, 'market')" data-i18n="tabMarket">Market Prices</button>
+                <button class="tab" onclick="showTab(event, 'weather')" data-i18n="tabWeather">Weather Insights</button>
+                <button class="tab" onclick="showTab(event, 'schemes')" data-i18n="tabSchemes">Govt Schemes 🏛️</button>
+            </div>
+
+            <div id="crops" class="tab-content active">
+                <h3 data-i18n="headCrops">Recommended Crops</h3>
+                <div id="cropsList"></div>
+            </div>
+
+            <div id="market" class="tab-content">
+                <h3 data-i18n="headMarket">Market Analysis</h3>
+                <div id="marketInfo"></div>
+            </div>
+
+            <div id="weather" class="tab-content">
+                <h3 data-i18n="headWeather">Weather Insights</h3>
+                <div id="weatherInfo"></div>
+            </div>
+
+            <div id="schemes" class="tab-content">
+                <h3 data-i18n="headSchemes">Eligible Government Subsidies</h3>
+                <div id="schemesInfo"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Modal -->
+    <div id="locationModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 30px; border-radius: 8px; max-width: 400px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <h3 style="color: #002244; margin-bottom: 15px; font-size: 1.5em;" data-i18n="modalTitle">Location Permission Required</h3>
+            <p style="color: #333; margin-bottom: 25px; line-height: 1.5;" data-i18n="modalBody">You have to give permission to use this website. We need your precise location to provide accurate agricultural recommendations.</p>
+            <div style="display: flex; gap: 15px; justify-content: center;">
+                <button id="btnTryAgain" style="background: #107c41; color: white; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1em;" data-i18n="btnTryAgain">Try Again</button>
+                <button id="btnCancel" style="background: #ccc; color: #333; padding: 12px 24px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 1em;" data-i18n="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=7"></script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+{
+    "regions": {
+        "punjab_haryana": {
+            "temp": "10-40°C",
+            "rainfall": "Moderate (Irrigated)",
+            "crops": [
+                { "name": "Wheat (HD 2967)", "yield": "20-24 quintals/acre", "investment": 12000, "price": 2275, "soil": ["alluvial", "loamy"], "water": ["canal", "borewell"], "tip": "Use laser land leveling to save 20% water and increase yield by 15%." },
+                { "name": "Mustard (Pusa Bold)", "yield": "8-10 quintals/acre", "investment": 8500, "price": 5450, "soil": ["alluvial", "sandy"], "water": ["rainfed", "canal"], "tip": "Ensure 3 irrigations at rosette, flowering, and siliqua filling stages." },
+                { "name": "Barley (DWRB 123)", "yield": "12-15 quintals/acre", "investment": 6000, "price": 1735, "soil": ["alluvial"], "water": ["rainfed"], "tip": "Ideal for slightly saline soils where wheat performance drops." },
+                { "name": "Basmati Rice (PB 1121)", "yield": "18-22 quintals/acre", "investment": 16000, "price": 3200, "soil": ["alluvial", "clay"], "water": ["canal", "borewell"], "tip": "Opt for DSR (Direct Seeded Rice) to save labor and nursery costs." }
+            ],
+            "schemes": [
+                {"name": "Crop Residue Management", "desc": "50-80% subsidy for machinery to manage crop stubble.", "eligibility": "Farmers in Punjab/Haryana"}
+            ]
+        },
+        "maharashtra_gujarat": {
+            "temp": "20-35°C",
+            "rainfall": "Moderate",
+            "crops": [
+                { "name": "Soybean (JS 335)", "yield": "10-12 quintals/acre", "investment": 11000, "price": 4600, "soil": ["black"], "water": ["rainfed"], "tip": "Treat seeds with Rhizobium for 10% higher yield." },
+                { "name": "Cotton (Bt)", "yield": "12-15 quintals/acre", "investment": 22000, "price": 6620, "soil": ["black"], "water": ["borewell", "canal"], "tip": "Install yellow sticky traps for effective whitefly management." },
+                { "name": "Cumin (Jeera)", "yield": "3-5 quintals/acre", "investment": 20000, "price": 45000, "soil": ["loamy", "sandy"], "water": ["borewell", "drip"], "tip": "Highly profitable but needs cold climate and zero moisture at maturity." },
+                { "name": "Gram (Digvijay)", "yield": "6-8 quintals/acre", "investment": 7000, "price": 5440, "soil": ["black"], "water": ["rainfed"], "tip": "Niiping (removing top buds) at 30 days increases branching and yield." }
+            ]
+        },
+        "himalayan": {
+            "temp": "5-25°C",
+            "rainfall": "High (Temperate)",
+            "crops": [
+                { "name": "Royal Delicious Apple", "yield": "10-12 tonnes/acre", "investment": 55000, "price": 8000, "soil": ["mountain", "forest"], "water": ["rainfed", "spring"], "tip": "Prune trees in winter to ensure balanced sunlight penetration." },
+                { "name": "Off-season Peas", "yield": "30-40 quintals/acre", "investment": 15000, "price": 4500, "soil": ["mountain", "loamy"], "water": ["stream", "spring"], "tip": "Extremely high market demand in plains during summer months." },
+                { "name": "Large Cardamom", "yield": "200-300 kg/acre", "investment": 60000, "price": 110000, "soil": ["forest", "mountain"], "water": ["rainfed", "spring"], "tip": "High-value shade-loving crop; perfect for organic farming certifications." },
+                { "name": "Strawberry", "yield": "8-10 tonnes/acre", "investment": 150000, "price": 15000, "soil": ["mountain", "sandy"], "water": ["drip"], "tip": "Requires mulching to prevent fruit rot and conserve moisture." }
+            ]
+        },
+        "rajasthan": {
+            "temp": "10-45°C",
+            "rainfall": "Very Low (Arid)",
+            "crops": [
+                { "name": "Bajra (Pearl Millet)", "yield": "8-12 quintals/acre", "investment": 4000, "price": 2500, "soil": ["sandy"], "water": ["rainfed"], "tip": "Use heat-tolerant hybrids for survival in 45°C temperatures." },
+                { "name": "Guar (Cluster Bean)", "yield": "4-6 quintals/acre", "investment": 3500, "price": 5800, "soil": ["sandy"], "water": ["rainfed"], "tip": "Industrial demand for guar gum makes this a reliable cash crop." },
+                { "name": "Isabgol (Psyllium)", "yield": "4-5 quintals/acre", "investment": 7000, "price": 15000, "soil": ["sandy", "loamy"], "water": ["borewell"], "tip": "Needs clear weather at maturity; dew or rain can damage seeds." }
+            ]
+        },
+        "north_east": {
+            "temp": "15-30°C",
+            "rainfall": "Very High (Humid)",
+            "crops": [
+                { "name": "Assam Tea (Clonal)", "yield": "800-1000 kg/acre", "investment": 120000, "price": 25000, "soil": ["forest", "mountain", "laterite"], "water": ["rainfed"], "tip": "Maintain acidic soil pH (4.5-5.5) for high-quality leaves." },
+                { "name": "Ginger (Nadia)", "yield": "40-60 quintals/acre", "investment": 45000, "price": 8000, "soil": ["forest", "loamy"], "water": ["rainfed"], "tip": "Intercrop with maize for partial shade and extra income." },
+                { "name": "Pineapple (Kew)", "yield": "15-20 tonnes/acre", "investment": 50000, "price": 2000, "soil": ["laterite", "sandy"], "water": ["rainfed"], "tip": "Plant on hill slopes (terracing) to prevent waterlogging." }
+            ]
+        },
+        "south_india": {
+            "temp": "22-35°C",
+            "rainfall": "High",
+            "crops": [
+                { "name": "Paddy (Ponni)", "yield": "22-26 quintals/acre", "investment": 15000, "price": 2183, "soil": ["alluvial", "clay", "red"], "water": ["canal", "borewell", "rainfed"], "tip": "SRI (System of Rice Intensification) can double yield with 40% less water." },
+                { "name": "Turmeric (Erode)", "yield": "20-25 quintals/acre", "investment": 40000, "price": 9000, "soil": ["red", "loamy"], "water": ["borewell", "drip"], "tip": "Curcumin content is highest when harvested at 9 months maturity." },
+                { "name": "Coconut (Hybrid)", "yield": "8000-10000 nuts/acre", "investment": 50000, "price": 2500, "soil": ["red", "sandy", "laterite"], "water": ["borewell", "drip"], "tip": "Apply Salt and Potash annually to increase nut weight and size." }
+            ]
+        },
+        "central_india": {
+            "temp": "10-38°C",
+            "rainfall": "Moderate",
+            "crops": [
+                { "name": "Wheat (Sharbati)", "yield": "18-22 quintals/acre", "investment": 12000, "price": 3500, "soil": ["alluvial", "black"], "water": ["canal", "borewell"], "tip": "MP's Sharbati Wheat sells at 40% premium in urban markets." },
+                { "name": "Sugarcane (Co 0238)", "yield": "350-400 quintals/acre", "investment": 45000, "price": 315, "soil": ["alluvial", "clay", "black"], "water": ["canal", "borewell"], "tip": "Intercrop with onion or garlic for bonus income during first 3 months." },
+                { "name": "Potato (Kufri Jyoti)", "yield": "120-150 quintals/acre", "investment": 35000, "price": 900, "soil": ["alluvial", "sandy"], "water": ["borewell"], "tip": "Use cold storage to sell during off-season price peaks (Sep-Oct)." }
+            ]
+        },
+        "coastal_islands": {
+            "temp": "25-32°C",
+            "rainfall": "Very High",
+            "crops": [
+                { "name": "Coconut (TXD Hybrid)", "yield": "10000-12000 nuts/acre", "investment": 45000, "price": 2500, "soil": ["sandy", "alluvial", "laterite"], "water": ["rainfed", "drip"], "tip": "Ideal for coastal belt; intercrop with cocoa or pepper for extra profit." },
+                { "name": "Areca nut (Mangala)", "yield": "10-12 quintals/acre", "investment": 60000, "price": 45000, "soil": ["laterite", "red", "alluvial"], "water": ["rainfed", "borewell"], "tip": "Requires good drainage; maintain clean basins to prevent root rot." },
+                { "name": "Cashew (Vengurla-4)", "yield": "8-10 quintals/acre", "investment": 20000, "price": 9000, "soil": ["sandy", "laterite"], "water": ["rainfed"], "tip": "Extremely drought tolerant once established; perfect for island soil." }
+            ],
+            "schemes": [
+                {"name": "Coconut Palm Insurance Scheme", "desc": "Specific insurance coverage for palm trees against pests and storms.", "eligibility": "Coastal/Island farmers"}
+            ]
+        }
+    },
+    "insurance": {
+        "kharif": { "premium_rate": 0.02, "name": "Kharif Insurance (PMFBY)" },
+        "rabi": { "premium_rate": 0.015, "name": "Rabi Insurance (PMFBY)" },
+        "commercial": { "premium_rate": 0.05, "name": "Commercial/Horticulture Insurance" }
+    }
+}
