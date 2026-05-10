@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
+from typing import Optional
 import json
 import logging
 import os
@@ -107,8 +108,8 @@ class FarmData(BaseModel):
     water: str
     farmSize: float
     budget: float
-    lat: float = None
-    lon: float = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
 
 class UserSync(BaseModel):
     email: str

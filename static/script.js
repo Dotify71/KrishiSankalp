@@ -286,8 +286,8 @@ document.getElementById('farmForm').addEventListener('submit', async (e) => {
         soil: document.getElementById('soil').value,
         season: document.getElementById('season').value,
         water: document.getElementById('water').value,
-        farmSize: document.getElementById('farmSize').value,
-        budget: document.getElementById('budget').value,
+        farmSize: Number(document.getElementById('farmSize').value),
+        budget: Number(document.getElementById('budget').value),
         lat: currentLat,
         lon: currentLon
     };
@@ -346,6 +346,29 @@ function displayResults(data) {
         document.getElementById('ndviData').innerHTML = '';
     }
     
+    // Display Market Data
+    if (data.market && data.market.length > 0) {
+        let marketHtml = `<table><tr><th>Crop</th><th>Price</th></tr>`;
+        data.market.forEach(item => {
+            marketHtml += `<tr><td>${item.crop}</td><td>₹${item.price}/${t.resQuintal}</td></tr>`;
+        });
+        marketHtml += `</table>`;
+        document.getElementById('marketInfo').innerHTML = marketHtml;
+    } else {
+        document.getElementById('marketInfo').innerHTML = `<p>No live mandi data available for this region currently.</p>`;
+    }
+
+    // Display Schemes
+    if (data.schemes && data.schemes.length > 0) {
+        let schemesHtml = ``;
+        data.schemes.forEach(scheme => {
+            schemesHtml += `<div class="crop-item"><div class="crop-name">${scheme.name}</div><div class="crop-details">${scheme.desc}</div></div>`;
+        });
+        document.getElementById('schemesInfo').innerHTML = schemesHtml;
+    } else {
+        document.getElementById('schemesInfo').innerHTML = `<p>No matching schemes found for your profile.</p>`;
+    }
+
     loadCommunity();
 }
 
