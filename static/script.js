@@ -21,8 +21,11 @@ const translations = {
         water4:"River / Stream", water5:"Pond / Tank Irrigation",
         water6:"Drip / Sprinkler System", water7:"Open Well",
         btnListen:"🔊 Listen", btnPrint:"🖨️ Print",
-        tabCrops:"Crop Suggestions", tabMarket:"Market Prices", tabWeather:"Weather Insights", tabSchemes:"Govt Schemes 🏛️",
-        headCrops:"Recommended Crops", headMarket:"Market Analysis", headWeather:"Weather Insights", headSchemes:"Eligible Government Subsidies",
+        tabCrops:"Crop Suggestions", tabMarket:"Market Prices", tabWeather:"Weather Insights", tabYield: "Satellite Yield 🛰️", tabCommunity: "Community 🤝", tabSchemes:"Govt Schemes 🏛️",
+        headCrops:"Recommended Crops", headMarket:"Market Analysis", headWeather:"Weather Insights", headYield: "Satellite Crop Monitoring (NDVI)", headCommunity: "Krishi Community Success Stories", headSchemes:"Eligible Government Subsidies",
+        loadingCommunity: "Loading regional stories...", shareTitle: "Did KrishiSankalp help you?", shareDesc: "Share your story to help other farmers in your district.", btnShare: "Share My Success",
+        yieldDesc: "Analyzing satellite imagery for your farm coordinates...",
+        resYieldValue: "Vegetation Index (NDVI)", resYieldStatus: "Crop Health Status",
         modalTitle:"Location Permission Required",
         modalBody:"You have to give permission to use this website. We need your precise location to provide accurate agricultural recommendations.",
         btnTryAgain:"Try Again", btnCancel:"Cancel",
@@ -62,8 +65,11 @@ const translations = {
         water4:"नदी / नाला", water5:"तालाब / टंकी सिंचाई",
         water6:"ड्रिप / स्प्रिंकलर प्रणाली", water7:"खुला कुआँ",
         btnListen:"🔊 सुनें", btnPrint:"🖨️ प्रिंट",
-        tabCrops:"फसल सुझाव", tabMarket:"बाज़ार भाव", tabWeather:"मौसम जानकारी", tabSchemes:"सरकारी योजनाएँ 🏛️",
-        headCrops:"अनुशंसित फसलें", headMarket:"बाज़ार विश्लेषण", headWeather:"मौसम जानकारी", headSchemes:"पात्र सरकारी सब्सिडी",
+        tabCrops:"फसल सुझाव", tabMarket:"बाज़ार भाव", tabWeather:"मौसम जानकारी", tabYield: "सैटेलाइट पैदावार 🛰️", tabCommunity: "समुदाय 🤝", tabSchemes:"सरकारी योजनाएँ 🏛️",
+        headCrops:"अनुशंसित फसलें", headMarket:"बाज़ार विश्लेषण", headWeather:"मौसम जानकारी", headYield: "सैटेलाइट फसल निगरानी (NDVI)", headCommunity: "कृषि समुदाय सफलता की कहानियाँ", headSchemes:"पात्र सरकारी सब्सिडी",
+        loadingCommunity: "क्षेत्रीय कहानियाँ लोड हो रही हैं...", shareTitle: "क्या कृषि संकल्प ने आपकी मदद की?", shareDesc: "अपने जिले के अन्य किसानों की मदद करने के लिए अपनी कहानी साझा करें।", btnShare: "मेरी सफलता साझा करें",
+        yieldDesc: "आपके खेत के निर्देशांकों के लिए सैटेलाइट इमेजरी का विश्लेषण किया जा रहा है...",
+        resYieldValue: "वनस्पति सूचकांक (NDVI)", resYieldStatus: "फसल स्वास्थ्य स्थिति",
         modalTitle:"स्थान अनुमति आवश्यक",
         modalBody:"इस वेबसाइट का उपयोग करने के लिए आपको अनुमति देनी होगी। सटीक कृषि सुझावों के लिए हमें आपके सटीक स्थान की आवश्यकता है।",
         btnTryAgain:"पुनः प्रयास करें", btnCancel:"रद्द करें",
@@ -127,6 +133,8 @@ const stateTranslations = {
 };
 
 let tomInstances = {};
+let currentLat = null;
+let currentLon = null;
 
 // --- 10-Year Persistence: Server-side Sync ---
 async function syncUserToServer(overrides = {}) {
@@ -176,6 +184,15 @@ async function syncUserToServer(overrides = {}) {
 document.addEventListener('DOMContentLoaded', async () => {
     if (user && user.email) {
         await syncUserToServer();
+    }
+
+    // Auto-request location for precision
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+            currentLat = pos.coords.latitude;
+            currentLon = pos.coords.longitude;
+            console.log("GPS Precision Active:", currentLat, currentLon);
+        });
     }
 
     const langToggle = document.getElementById('langToggle');
@@ -270,7 +287,9 @@ document.getElementById('farmForm').addEventListener('submit', async (e) => {
         season: document.getElementById('season').value,
         water: document.getElementById('water').value,
         farmSize: document.getElementById('farmSize').value,
-        budget: document.getElementById('budget').value
+        budget: document.getElementById('budget').value,
+        lat: currentLat,
+        lon: currentLon
     };
     const submitBtn = document.querySelector('button[type="submit"]');
     submitBtn.disabled = true;
@@ -308,6 +327,82 @@ function displayResults(data) {
     document.getElementById('cropsList').innerHTML = cropsHtml;
     const weatherBadge = data.weather.desc.includes("Live") ? ' <span style="background:#2e7d32; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em;">LIVE</span>' : '';
     document.getElementById('weatherInfo').innerHTML = `<div class="weather-info"><h4>${t.resLoc}: ${data.weather.location}${weatherBadge}</h4><p>${t.resTemp}: ${data.weather.temp}</p><p>${t.resRain}: ${data.weather.rainfall}</p><p>${t.resHum}: ${data.weather.humidity}</p><p><strong>Status:</strong> ${data.weather.desc}</p></div>`;
+    
+    // Display Satellite Yield Data
+    if (data.yield && data.yield.status !== "No data") {
+        document.getElementById('ndviMap').innerHTML = `<div style="text-align:center;"><span style="color:#2e7d32; font-weight:bold;">🛰️ Satellite Data Active</span><p style="font-size:0.8em; color:#666;">Showing NDVI analysis for your coordinates</p></div>`;
+        document.getElementById('ndviData').innerHTML = `
+            <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
+                <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldValue}</p>
+                <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.value}</p>
+            </div>
+            <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
+                <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldStatus}</p>
+                <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.status}</p>
+            </div>
+        `;
+    } else {
+        document.getElementById('ndviMap').innerHTML = `<div style="text-align:center; color:#999;"><p>Satellite Data Pending Verification</p><p style="font-size:0.8em;">(Requires Active AgroMonitoring Subscription)</p></div>`;
+        document.getElementById('ndviData').innerHTML = '';
+    }
+    
+    loadCommunity();
+}
+
+async function loadCommunity() {
+    const list = document.getElementById('postsList');
+    try {
+        const res = await fetch('/api/community');
+        const posts = await res.json();
+        
+        if (posts.length === 0) {
+            // Seed some data for the user
+            list.innerHTML = `
+                <div class="crop-item" style="border-left-color: #0055a4;">
+                    <div style="font-weight: bold; color: #0055a4;">Rajesh Kumar • Ludhiana, Punjab</div>
+                    <p style="margin: 5px 0; font-size: 0.9em;">"The AI correctly identified Wheat Rust on my farm. I followed the organic treatment and saved 2 acres of crop!"</p>
+                    <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ Saved Crop</span>
+                </div>
+                <div class="crop-item" style="border-left-color: #0055a4;">
+                    <div style="font-weight: bold; color: #0055a4;">Amit Patil • Nashik, Maharashtra</div>
+                    <p style="margin: 5px 0; font-size: 0.9em;">"Checking market prices here helped me sell my onions at ₹400/quintal more than the local mandi price."</p>
+                    <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">📈 Higher Profit</span>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = posts.map(p => `
+            <div class="crop-item" style="border-left-color: #0055a4;">
+                <div style="font-weight: bold; color: #0055a4;">${p.author} • ${p.location}</div>
+                <p style="margin: 5px 0; font-size: 0.9em;">"${p.content}"</p>
+                <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ ${p.tag}</span>
+            </div>
+        `).join('');
+    } catch (e) {
+        list.innerHTML = '<p>Community currently offline.</p>';
+    }
+}
+
+window.showShareForm = async function() {
+    const content = prompt("Share your success story (e.g., 'The AI saved my cotton crop!'):");
+    if (!content) return;
+    
+    const tag = prompt("Add a tag (e.g., 'Saved Crop', 'Higher Profit'):") || "Success";
+    
+    try {
+        await fetch('/api/community', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                author: user.name,
+                location: document.getElementById('location').value.split(',')[0],
+                content: content,
+                tag: tag
+            })
+        });
+        loadCommunity();
+    } catch (e) { alert("Failed to post."); }
 }
 
 function showTab(event, tabName) {

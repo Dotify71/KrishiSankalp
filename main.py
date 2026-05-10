@@ -31,6 +31,7 @@ WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 TREFLE_TOKEN = os.getenv("TREFLE_TOKEN")
 GOVT_DATA_API_KEY = os.getenv("GOVT_DATA_API_KEY")
 KINDWISE_TOKEN = os.getenv("KINDWISE_TOKEN")
+AGRO_API_KEY = os.getenv("AGRO_API_KEY")
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     admin_user = os.getenv("ADMIN_USERNAME", "admin")
@@ -69,6 +70,8 @@ class FarmQuery(Base):
     water = Column(String)
     farm_size = Column(Float)
     budget = Column(Float)
+    lat = Column(Float, nullable=True)
+    lon = Column(Float, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 class User(Base):
@@ -85,6 +88,15 @@ class User(Base):
     budget = Column(Float)
     last_login = Column(DateTime, default=datetime.datetime.utcnow)
 
+class CommunityPost(Base):
+    __tablename__ = "community_posts"
+    id = Column(Integer, primary_key=True, index=True)
+    author = Column(String)
+    location = Column(String)
+    content = Column(String)
+    tag = Column(String) # e.g., "Saved Crop", "Higher Yield"
+    timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+
 Base.metadata.create_all(bind=engine)
 
 # --- 2. Pydantic Models for API ---
@@ -95,6 +107,8 @@ class FarmData(BaseModel):
     water: str
     farmSize: float
     budget: float
+    lat: float = None
+    lon: float = None
 
 class UserSync(BaseModel):
     email: str
@@ -118,7 +132,9 @@ def get_recommendation(data: FarmData):
         season=data.season,
         water=data.water,
         farm_size=data.farmSize,
-        budget=data.budget
+        budget=data.budget,
+        lat=data.lat,
+        lon=data.lon
     )
     db.add(db_query)
     db.commit()
@@ -275,28 +291,39 @@ def get_recommendation(data: FarmData):
     # Reset random seed
     random.seed()
 
-    # --- 4. Live Weather & Coordination Integration (OpenWeatherMap) ---
     live_temp = f"Seasonal Avg ({temp})"
     live_hum = humidity
     live_desc = "Standard conditions"
-    lat, lon = None, None
+    lat, lon = data.lat, data.lon
     
-    try:
-        w_url = f"https://api.openweathermap.org/data/2.5/weather?q={data.location}&appid={WEATHER_API_KEY}&units=metric"
-        w_res = requests.get(w_url, timeout=2)
-        if w_res.status_code == 200:
-            w_data = w_res.json()
-            live_temp = f"{w_data['main']['temp']}°C"
-            live_hum = f"{w_data['main']['humidity']}%"
-            live_desc = w_data['weather'][0]['description'].capitalize()
-            lat = w_data['coord']['lat']
-            lon = w_data['coord']['lon']
-            if w_data['main']['temp'] > 40:
-                live_desc += " ⚠️ Extreme Heat Alert"
-            elif w_data['main']['temp'] < 5:
-                live_desc += " ⚠️ Frost Warning"
-    except:
-        pass
+    # If GPS not provided, fallback to city search
+    if not lat or not lon:
+        try:
+            w_url = f"https://api.openweathermap.org/data/2.5/weather?q={data.location}&appid={WEATHER_API_KEY}&units=metric"
+            w_res = requests.get(w_url, timeout=2)
+            if w_res.status_code == 200:
+                w_data = w_res.json()
+                lat = w_data['coord']['lat']
+                lon = w_data['coord']['lon']
+        except: pass
+    
+    if lat and lon:
+        try:
+            w_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric"
+            w_res = requests.get(w_url, timeout=2)
+            if w_res.status_code == 200:
+                w_data = w_res.json()
+                live_temp = f"{w_data['main']['temp']}°C"
+                live_hum = f"{w_data['main']['humidity']}%"
+                live_desc = w_data['weather'][0]['description'].capitalize()
+                lat = w_data['coord']['lat']
+                lon = w_data['coord']['lon']
+                if w_data['main']['temp'] > 40:
+                    live_desc += " ⚠️ Extreme Heat Alert"
+                elif w_data['main']['temp'] < 5:
+                    live_desc += " ⚠️ Frost Warning"
+        except:
+            pass
 
     # --- 5. Global Soil Intelligence (SoilGrids API) ---
     soil_insight = "Regional standard soil"
@@ -352,6 +379,59 @@ def get_recommendation(data: FarmData):
     if "schemes" in region_data:
         schemes.extend(region_data["schemes"])
 
+    # --- 7. Satellite Yield Analysis (AgroMonitoring) ---
+    ndvi_data = {"status": "No data", "value": 0}
+    if lat and lon and AGRO_API_KEY:
+        try:
+            # 7a. Create a small polygon for the farm if not exists
+            # For demo, we use a 100m buffer around the lat/lon
+            poly_name = f"farm_{data.location.replace(' ', '_')}"
+            agro_url = f"http://api.agromonitoring.com/agro/1.0/polygons?appid={AGRO_API_KEY}"
+            
+            # Simple 0.001 degree square (~111m)
+            coords = [
+                [lon - 0.001, lat - 0.001], [lon + 0.001, lat - 0.001],
+                [lon + 0.001, lat + 0.001], [lon - 0.001, lat + 0.001],
+                [lon - 0.001, lat - 0.001]
+            ]
+            
+            poly_res = requests.post(agro_url, json={
+                "name": poly_name,
+                "geo_json": {
+                    "type": "Feature", "properties": {},
+                    "geometry": {"type": "Polygon", "coordinates": [coords]}
+                }
+            }, timeout=2)
+            
+            poly_id = None
+            if poly_res.status_code in [201, 400]: # 400 if already exists
+                if poly_res.status_code == 201:
+                    poly_id = poly_res.json()['id']
+                else:
+                    # Fetch existing
+                    list_res = requests.get(agro_url, timeout=2)
+                    if list_res.status_code == 200:
+                        for p in list_res.json():
+                            if p['name'] == poly_name:
+                                poly_id = p['id']
+                                break
+            
+            if poly_id:
+                # 7b. Fetch NDVI Data
+                ndvi_url = f"http://api.agromonitoring.com/agro/1.0/ndvi/history?polyid={poly_id}&start={int(datetime.datetime.now().timestamp()) - 2592000}&end={int(datetime.datetime.now().timestamp())}&appid={AGRO_API_KEY}"
+                ndvi_res = requests.get(ndvi_url, timeout=2)
+                if ndvi_res.status_code == 200 and ndvi_res.json():
+                    latest = ndvi_res.json()[-1]
+                    ndvi_val = latest['data']['mean']
+                    status = "Excellent" if ndvi_val > 0.6 else "Good" if ndvi_val > 0.4 else "Moderate" if ndvi_val > 0.2 else "Low (Stress)"
+                    ndvi_data = {
+                        "status": status,
+                        "value": round(ndvi_val, 2),
+                        "map_url": f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}"
+                    }
+        except Exception as e:
+            logger.warning(f"Satellite analysis failed: {str(e)}")
+
     return {
         "crops": regional_crops,
         "weather": {
@@ -362,6 +442,7 @@ def get_recommendation(data: FarmData):
             "desc": live_desc,
             "soil_analysis": soil_insight
         },
+        "yield": ndvi_data,
         "schemes": schemes,
         "query_id": db_query.id
     }
@@ -563,6 +644,34 @@ def get_admin_page(username: str = Depends(verify_admin)):
     </script>
 </body>
 </html>"""
+
+@app.get("/api/community")
+def get_community_posts():
+    db = SessionLocal()
+    posts = db.query(CommunityPost).order_by(CommunityPost.timestamp.desc()).limit(10).all()
+    db.close()
+    return posts
+
+class PostCreate(BaseModel):
+    author: str
+    location: str
+    content: str
+    tag: str
+
+@app.post("/api/community")
+def add_community_post(post: PostCreate):
+    db = SessionLocal()
+    db_post = CommunityPost(
+        author=post.author,
+        location=post.location,
+        content=post.content,
+        tag=post.tag
+    )
+    db.add(db_post)
+    db.commit()
+    db.refresh(db_post)
+    db.close()
+    return db_post
 
 @app.post("/api/diagnose")
 async def diagnose_crop(file: UploadFile = File(...)):
