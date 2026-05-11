@@ -187,13 +187,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Auto-request location for precision
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-            currentLat = pos.coords.latitude;
-            currentLon = pos.coords.longitude;
-            console.log("GPS Precision Active:", currentLat, currentLon);
-        });
+    function requestLocation(isRetry = false) {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    currentLat = pos.coords.latitude;
+                    currentLon = pos.coords.longitude;
+                    console.log("GPS Precision Active:", currentLat, currentLon);
+                    document.getElementById('locationModal').style.display = 'none';
+                },
+                (err) => {
+                    console.warn("GPS Permission Denied or Unavailable.", err.message);
+                    document.getElementById('locationModal').style.display = 'flex';
+                    if (isRetry) {
+                        alert("Location access is permanently blocked! Please check your browser settings (click the icon in the URL bar, or check Safari Preferences > Websites > Location) to 'Allow' access, then refresh the page.");
+                    }
+                }
+            );
+        }
     }
+    requestLocation();
+
+    document.getElementById('btnTryAgain').addEventListener('click', () => {
+        requestLocation(true);
+    });
+    document.getElementById('btnCancel').addEventListener('click', () => {
+        document.getElementById('locationModal').style.display = 'none';
+    });
 
     const langToggle = document.getElementById('langToggle');
     const savedLang = localStorage.getItem('krishiLang') || 'en';
@@ -208,10 +228,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             const picEl = document.getElementById('userPic');
             picEl.src = user.picture;
-            picEl.style.filter = 'blur(1.5px)'; 
-            picEl.style.transition = 'filter 0.3s';
-            picEl.onmouseover = () => picEl.style.filter = 'blur(0px)';
-            picEl.onmouseout = () => picEl.style.filter = 'blur(1.5px)';
             document.getElementById('userName').innerText = user.name;
         }
     }
@@ -279,6 +295,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await initSelects();
 });
 
+let recommendationCount = parseInt(localStorage.getItem('krishiRecCount') || '0');
 document.getElementById('farmForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const formData = {
@@ -307,6 +324,16 @@ document.getElementById('farmForm').addEventListener('submit', async (e) => {
         if (!response.ok) throw new Error('API Error');
         const data = await response.json();
         displayResults(data);
+
+        // Trigger donation popup every 4 recommendations
+        recommendationCount++;
+        localStorage.setItem('krishiRecCount', recommendationCount.toString());
+        if (recommendationCount % 4 === 0) {
+            setTimeout(() => {
+                const qrModal = document.getElementById('qrModal');
+                if (qrModal) qrModal.style.display = 'flex';
+            }, 1500);
+        }
     } catch (error) {
         document.getElementById('cropsList').innerHTML = `<div class="loading" style="color: red;">Error communicating with server.</div>`;
     } finally {
@@ -348,11 +375,45 @@ function displayResults(data) {
     
     // Display Market Data
     if (data.market && data.market.length > 0) {
-        let marketHtml = `<table><tr><th>Crop</th><th>Price</th></tr>`;
-        data.market.forEach(item => {
-            marketHtml += `<tr><td>${item.crop}</td><td>₹${item.price}/${t.resQuintal}</td></tr>`;
+        let marketHtml = `
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <thead>
+                <tr style="background-color: #f1f8e9; text-align: left; color: #1b5e20;">
+                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Commodity</th>
+                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Live Price</th>
+                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Market Trend</th>
+                </tr>
+            </thead>
+            <tbody>`;
+        
+        data.market.forEach((item, idx) => {
+            let badgeColor = "#757575"; // Stable grey
+            let badgeBg = "#f5f5f5";
+            let icon = "➖";
+            if (item.trend && item.trend.includes("Rising")) {
+                badgeColor = "#2e7d32";
+                badgeBg = "#e8f5e9";
+                icon = "📈";
+            } else if (item.trend && item.trend.includes("Falling")) {
+                badgeColor = "#c62828";
+                badgeBg = "#ffebee";
+                icon = "📉";
+            }
+            
+            const rowStyle = idx % 2 === 0 ? "background-color: #ffffff;" : "background-color: #fafafa;";
+            marketHtml += `
+                <tr style="${rowStyle} border-bottom: 1px solid #eeeeee;">
+                    <td style="padding: 15px; font-weight: bold; color: #333;">${item.crop}</td>
+                    <td style="padding: 15px; font-weight: bold; color: #2e7d32; font-size: 1.1em;">₹${item.price}<span style="font-size: 0.7em; color: #666; font-weight: normal;">/${t.resQuintal}</span></td>
+                    <td style="padding: 15px;">
+                        <span style="background-color: ${badgeBg}; color: ${badgeColor}; padding: 5px 10px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block;">
+                            ${icon} ${item.trend || "Stable"}
+                        </span>
+                    </td>
+                </tr>`;
         });
-        marketHtml += `</table>`;
+        marketHtml += `</tbody></table>
+        <p style="text-align: right; font-size: 0.8em; color: #999; margin-top: 10px;">*Source: Agmarknet (Govt. of India)</p>`;
         document.getElementById('marketInfo').innerHTML = marketHtml;
     } else {
         document.getElementById('marketInfo').innerHTML = `<p>No live mandi data available for this region currently.</p>`;
@@ -362,7 +423,13 @@ function displayResults(data) {
     if (data.schemes && data.schemes.length > 0) {
         let schemesHtml = ``;
         data.schemes.forEach(scheme => {
-            schemesHtml += `<div class="crop-item"><div class="crop-name">${scheme.name}</div><div class="crop-details">${scheme.desc}</div></div>`;
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(scheme.name + ' government scheme india official portal')}`;
+            schemesHtml += `
+            <div class="crop-item" style="cursor: pointer; transition: 0.2s;" onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'" onmouseout="this.style.boxShadow='none'" onclick="window.open('${searchUrl}', '_blank')">
+                <div class="crop-name" style="color: #0055a4; text-decoration: underline;">${scheme.name} ↗</div>
+                <div class="crop-details">${scheme.desc}</div>
+                <div style="font-size: 0.8em; color: #666; margin-top: 5px;">Click to visit official portal</div>
+            </div>`;
         });
         document.getElementById('schemesInfo').innerHTML = schemesHtml;
     } else {

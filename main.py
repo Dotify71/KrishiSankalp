@@ -435,6 +435,7 @@ def get_recommendation(data: FarmData):
 
     return {
         "crops": regional_crops,
+        "market": [{"crop": c["name"].split(" (")[0], "price": c["price"], "trend": c.get("trend", "Stable")} for c in regional_crops if c.get("price") and c.get("price") != "Personal Use"],
         "weather": {
             "location": data.location,
             "temp": live_temp,
