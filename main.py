@@ -602,6 +602,23 @@ def get_public_stats():
         loc = q.location if q.location else "Unknown"
         locations[loc] = locations.get(loc, 0) + 1
         sea = q.season if q.season else "Unknown"
+@app.get("/api/admin/users")
+def get_all_users(username: str = Depends(verify_admin)):
+    db = SessionLocal()
+    users = db.query(User).order_by(User.last_login.desc()).all()
+    db.close()
+    return users
+
+@app.delete("/api/admin/community/{post_id}")
+def delete_community_post(post_id: int, username: str = Depends(verify_admin)):
+    db = SessionLocal()
+    post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
+    if post:
+        db.delete(post)
+        db.commit()
+    db.close()
+    return {"status": "success"}
+
 @app.get("/api/admin/data")
 def get_admin_data(username: str = Depends(verify_admin)):
     db = SessionLocal()
@@ -619,7 +636,6 @@ def get_admin_data(username: str = Depends(verify_admin)):
         sea = q.season if q.season else "Unknown"
         seasons[sea] = seasons.get(sea, 0) + 1
         
-    # Get last 5 for activity table
     for q in queries[:5]:
         recent_activity.append({
             "location": q.location,
@@ -646,156 +662,203 @@ def get_admin_page(username: str = Depends(verify_admin)):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard | KrishiSankalp</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Management Console | KrishiSankalp</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --sidebar-w: 240px; --primary: #002244; --accent: #107c41; --bg: #f0f2f5; --text: #333; }
+        :root { --sidebar-w: 260px; --primary: #001a33; --accent: #107c41; --danger: #d32f2f; --bg: #f5f7f9; --border: #e1e4e8; }
         * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: var(--text); }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: #1a1a1a; }
         
-        /* Sidebar */
-        .sidebar { width: var(--sidebar-w); height: 100vh; background: var(--primary); color: white; position: fixed; padding: 20px; }
-        .sidebar h2 { font-size: 1.2em; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
-        .nav-item { padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 0.9em; transition: 0.3s; }
-        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #FF9933; }
+        /* Sidebar Navigation */
+        .sidebar { width: var(--sidebar-w); height: 100vh; background: var(--primary); color: #fff; position: fixed; display: flex; flex-direction: column; }
+        .sidebar-brand { padding: 25px; font-size: 1.1em; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .nav-list { flex: 1; padding: 20px 15px; }
+        .nav-btn { width: 100%; padding: 12px 15px; margin-bottom: 8px; border: none; background: none; color: #cbd5e0; text-align: left; cursor: pointer; border-radius: 6px; font-size: 0.9em; display: flex; align-items: center; gap: 12px; }
+        .nav-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
+        .nav-btn.active { background: var(--accent); color: #fff; }
         
-        /* Main Content */
-        .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
-        .top-bar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
-        .content { padding: 30px; }
+        /* Main Layout */
+        .wrapper { margin-left: var(--sidebar-w); flex: 1; min-width: 0; }
+        .top-nav { background: #fff; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); }
+        .view-panel { padding: 30px; display: none; }
+        .view-panel.active { display: block; }
         
-        /* Widgets */
-        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .stat-widget { background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
-        .stat-info h4 { margin: 0; font-size: 0.8em; color: #888; text-transform: uppercase; }
-        .stat-info div { font-size: 1.8em; font-weight: 700; color: var(--primary); margin-top: 5px; }
-        .stat-icon { width: 45px; height: 45px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2em; }
+        /* Components */
+        .card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 30px; }
+        .mini-card { background: #fff; padding: 20px; border-radius: 10px; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .mini-card label { font-size: 0.75em; color: #718096; text-transform: uppercase; font-weight: 600; }
+        .mini-card div { font-size: 1.6em; font-weight: 600; margin-top: 8px; color: var(--primary); }
         
-        /* Charts & Table */
-        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; margin-bottom: 30px; }
-        .panel { background: white; padding: 20px; border-radius: 12px; border: 1px solid #eee; }
-        .panel h3 { margin: 0 0 20px 0; font-size: 1em; color: var(--primary); display: flex; justify-content: space-between; }
+        .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 30px; }
+        .data-panel { background: #fff; padding: 24px; border-radius: 10px; border: 1px solid var(--border); }
+        .data-panel h4 { margin: 0 0 20px 0; font-size: 0.95em; color: #4a5568; border-bottom: 1px solid #f7fafc; padding-bottom: 12px; }
         
-        .table-wrap { width: 100%; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        th { text-align: left; padding: 12px; border-bottom: 2px solid #f0f0f0; color: #888; }
-        td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
-        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; background: #e3f2fd; color: #1976d2; }
+        /* Tables */
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        th { text-align: left; padding: 12px 15px; background: #f8fafc; color: #4a5568; font-weight: 600; border-bottom: 2px solid var(--border); }
+        td { padding: 12px 15px; border-bottom: 1px solid #edf2f7; vertical-align: middle; }
+        .action-btn { padding: 6px 12px; border: 1px solid var(--border); border-radius: 4px; background: #fff; cursor: pointer; font-size: 0.8em; }
+        .action-btn.delete { color: var(--danger); border-color: #fed7d7; }
+        .action-btn.delete:hover { background: #fff5f5; }
         
-        @media (max-width: 900px) {
-            .sidebar { display: none; }
-            .main { margin-left: 0; }
-            .grid-2 { grid-template-columns: 1fr; }
+        @media (max-width: 1024px) {
+            .sidebar { width: 70px; }
+            .sidebar-brand, .nav-btn span { display: none; }
+            .wrapper { margin-left: 70px; }
+            .chart-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2>KrishiSankalp</h2>
-        <div class="nav-item active">📊 Dashboard</div>
-        <div class="nav-item">👥 Users</div>
-        <div class="nav-item">🌍 Community</div>
-        <div class="nav-item" onclick="window.location.href='/'">🏠 View Site</div>
-    </div>
+    <aside class="sidebar">
+        <div class="sidebar-brand">Admin Console</div>
+        <nav class="nav-list">
+            <button class="nav-btn active" onclick="switchTab('dashboard', this)"><span>Dashboard</span></button>
+            <button class="nav-btn" onclick="switchTab('users', this)"><span>User Directory</span></button>
+            <button class="nav-btn" onclick="switchTab('community', this)"><span>Community Moderator</span></button>
+            <button class="nav-btn" style="margin-top:40px; color:#f56565;" onclick="window.location.href='/'"><span>Exit</span></button>
+        </nav>
+    </aside>
 
-    <div class="main">
-        <div class="top-bar">
-            <span style="font-weight: 600; color: #666;">Analytics Overview</span>
-            <div style="font-size: 0.9em; color: #888;">Admin Session: <b>Active</b></div>
-        </div>
+    <main class="wrapper">
+        <header class="top-nav">
+            <div id="breadcrumb" style="font-size:0.85em; color:#718096; font-weight:500;">Overview / Dashboard</div>
+            <div style="font-size:0.8em; color:#a0aec0;">System Status: Operational</div>
+        </header>
 
-        <div class="content">
-            <div class="stats-row">
-                <div class="stat-widget">
-                    <div class="stat-info"><h4>Total Farmers</h4><div id="totalUsers">-</div></div>
-                    <div class="stat-icon">👤</div>
+        <!-- DASHBOARD VIEW -->
+        <section id="dashboard" class="view-panel active">
+            <div class="card-row">
+                <div class="mini-card"><label>Total Records</label><div id="stat-queries">-</div></div>
+                <div class="mini-card"><label>Registered Users</label><div id="stat-users">-</div></div>
+                <div class="mini-card"><label>Moderated Posts</label><div id="stat-posts">-</div></div>
+            </div>
+            <div class="chart-grid">
+                <div class="data-panel">
+                    <h4>Regional Activity Breakdown</h4>
+                    <div style="height:250px;"><canvas id="chart-loc"></canvas></div>
                 </div>
-                <div class="stat-widget">
-                    <div class="stat-info"><h4>Platform Queries</h4><div id="totalQueries">-</div></div>
-                    <div class="stat-icon">📈</div>
-                </div>
-                <div class="stat-widget">
-                    <div class="stat-info"><h4>Success Stories</h4><div id="totalPosts">-</div></div>
-                    <div class="stat-icon">✨</div>
+                <div class="data-panel">
+                    <h4>Seasonal Demand Profile</h4>
+                    <div style="height:250px;"><canvas id="chart-sea"></canvas></div>
                 </div>
             </div>
-
-            <div class="grid-2">
-                <div class="panel">
-                    <h3>Demand by Region <small style="font-weight:400; color:#999;">(Top 10)</small></h3>
-                    <div style="height: 250px;"><canvas id="locationChart"></canvas></div>
-                </div>
-                <div class="panel">
-                    <h3>Seasonal Activity</h3>
-                    <div style="height: 250px;"><canvas id="seasonChart"></canvas></div>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h3>Recent Platform Activity</h3>
-                <div class="table-wrap">
+            <div class="data-panel">
+                <h4>Recent Query History</h4>
+                <div class="table-container">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Location</th>
-                                <th>Soil Type</th>
-                                <th>Season</th>
-                                <th>Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentTable">
-                            <!-- Data injected here -->
-                        </tbody>
+                        <thead><tr><th>Location</th><th>Soil</th><th>Season</th><th>Time</th></tr></thead>
+                        <tbody id="table-recent"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
+
+        <!-- USERS VIEW -->
+        <section id="users" class="view-panel">
+            <div class="data-panel">
+                <h4>Registered Farmer Directory</h4>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Name</th><th>Email</th><th>Location</th><th>Last Active</th></tr></thead>
+                        <tbody id="table-users"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMMUNITY VIEW -->
+        <section id="community" class="view-panel">
+            <div class="data-panel">
+                <h4>Post Moderation Queue</h4>
+                <div class="table-container">
+                    <table>
+                        <thead><tr><th>Author</th><th>Preview</th><th>Category</th><th>Actions</th></tr></thead>
+                        <tbody id="table-community"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <script>
-        async function loadData() {
-            try {
-                const res = await fetch('/api/admin/data');
-                if (res.status === 401) { window.location.href = '/login'; return; }
-                const data = await res.json();
+        let dashboardData = null;
 
-                document.getElementById('totalQueries').innerText = data.total_queries;
-                document.getElementById('totalUsers').innerText = data.total_users;
-                document.getElementById('totalPosts').innerText = data.total_posts;
-
-                // Recent Table
-                document.getElementById('recentTable').innerHTML = data.recent.map(r => `
-                    <tr>
-                        <td><b>${r.location}</b></td>
-                        <td><span class="badge">${r.soil}</span></td>
-                        <td>${r.season}</td>
-                        <td style="color:#999;">${r.time}</td>
-                    </tr>
-                `).join('');
-
-                // Charts
-                const sortedLocs = Object.entries(data.locations).sort((a,b) => b[1]-a[1]).slice(0, 10);
-                new Chart(document.getElementById('locationChart'), {
-                    type: 'bar',
-                    data: {
-                        labels: sortedLocs.map(x => x[0]),
-                        datasets: [{ data: sortedLocs.map(x => x[1]), backgroundColor: '#002244', borderRadius: 4 }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
-                });
-
-                new Chart(document.getElementById('seasonChart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: Object.keys(data.seasons),
-                        datasets: [{ data: Object.values(data.seasons), backgroundColor: ['#FF9933', '#107c41', '#002244', '#f1c40f'], borderWidth: 0 }]
-                    },
-                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
-                });
-            } catch (err) { console.error(err); }
+        function switchTab(tabId, btn) {
+            document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            btn.classList.add('active');
+            document.getElementById('breadcrumb').innerText = "Overview / " + tabId.charAt(0).toUpperCase() + tabId.slice(1);
+            
+            if (tabId === 'users') loadUsers();
+            if (tabId === 'community') loadPosts();
         }
-        loadData();
+
+        async function loadDashboard() {
+            const res = await fetch('/api/admin/data');
+            const data = await res.json();
+            dashboardData = data;
+
+            document.getElementById('stat-queries').innerText = data.total_queries;
+            document.getElementById('stat-users').innerText = data.total_users;
+            document.getElementById('stat-posts').innerText = data.total_posts;
+
+            document.getElementById('table-recent').innerHTML = data.recent.map(r => `
+                <tr><td>${r.location}</td><td>${r.soil}</td><td>${r.season}</td><td style="color:#718096">${r.time}</td></tr>
+            `).join('');
+
+            const sorted = Object.entries(data.locations).sort((a,b)=>b[1]-a[1]).slice(0, 10);
+            new Chart(document.getElementById('chart-loc'), {
+                type: 'bar',
+                data: {
+                    labels: sorted.map(x=>x[0]),
+                    datasets: [{ data: sorted.map(x=>x[1]), backgroundColor: '#003366', borderRadius: 4 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+            });
+
+            new Chart(document.getElementById('chart-sea'), {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data.seasons),
+                    datasets: [{ data: Object.values(data.seasons), backgroundColor: ['#FF9933', '#107c41', '#003366', '#f1c40f'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
+            });
+        }
+
+        async function loadUsers() {
+            const res = await fetch('/api/admin/users');
+            const users = await res.json();
+            document.getElementById('table-users').innerHTML = users.map(u => `
+                <tr><td><b>${u.name || 'Anonymous'}</b></td><td>${u.email}</td><td>${u.location || '-'}</td><td style="color:#718096">${new Date(u.last_login).toLocaleDateString()}</td></tr>
+            `).join('');
+        }
+
+        async function loadPosts() {
+            const res = await fetch('/api/community');
+            const posts = await res.json();
+            document.getElementById('table-community').innerHTML = posts.map(p => `
+                <tr>
+                    <td><b>${p.author}</b></td>
+                    <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.content}</td>
+                    <td>${p.tag}</td>
+                    <td><button class="action-btn delete" onclick="deletePost(${p.id})">Remove</button></td>
+                </tr>
+            `).join('');
+        }
+
+        async function deletePost(id) {
+            if (confirm("Permanently remove this success story?")) {
+                await fetch(`/api/admin/community/${id}`, { method: 'DELETE' });
+                loadPosts();
+            }
+        }
+
+        loadDashboard();
     </script>
 </body>
 </html>"""
