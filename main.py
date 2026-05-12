@@ -27,6 +27,37 @@ load_dotenv()
 
 app = FastAPI(title="KrishiSankalp API")
 
+# --- Keep-Alive Logic for Render Free Tier ---
+import threading
+import time
+
+def keep_alive_ping():
+    """Pings the app's own URL to keep it from sleeping on Render's free tier."""
+    url = os.getenv("RENDER_EXTERNAL_URL")
+    if not url:
+        logger.info("RENDER_EXTERNAL_URL not set, skipping self-ping.")
+        return
+    
+    logger.info(f"Starting keep-alive background thread for: {url}")
+    while True:
+        try:
+            # Ping the health endpoint every 10 minutes (600 seconds)
+            requests.get(f"{url}/health", timeout=5)
+            logger.info("Keep-alive self-ping successful.")
+        except Exception as e:
+            logger.error(f"Keep-alive self-ping failed: {e}")
+        time.sleep(600)
+
+@app.on_event("startup")
+async def startup_event():
+    # Start the keep-alive thread in the background
+    threading.Thread(target=keep_alive_ping, daemon=True).start()
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "time": datetime.datetime.utcnow()}
+
+
 security = HTTPBasic()
 WEATHER_API_KEY = os.getenv("WEATHER_API_KEY")
 TREFLE_TOKEN = os.getenv("TREFLE_TOKEN")

@@ -1,0 +1,15 @@
+name: Keep Alive Render
+
+on:
+  schedule:
+    - cron: '*/14 * * * *' # Every 14 minutes
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render App
+        run: |
+          # Replace the URL below with your actual Render URL
+          curl -f https://krishisankalp.onrender.com/health || echo "Ping failed, but that's okay if the app is still waking up."
