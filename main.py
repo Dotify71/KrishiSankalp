@@ -738,6 +738,15 @@ async def diagnose_crop(file: UploadFile = File(...)):
             
         data = response.json()
         result = data.get("result", {})
+        
+        # Guard: Check if the image actually contains a plant
+        is_plant_info = result.get("is_plant", {})
+        if not is_plant_info.get("binary"):
+            return {
+                "error": "No plant detected. Please upload a clear photo of a crop leaf or stem.",
+                "details": f"Confidence: {round(is_plant_info.get('probability', 0) * 100, 1)}%"
+            }
+
         health_info = result.get("is_healthy", {})
         disease_info = result.get("disease", {})
         
