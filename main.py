@@ -602,34 +602,41 @@ def get_public_stats():
         loc = q.location if q.location else "Unknown"
         locations[loc] = locations.get(loc, 0) + 1
         sea = q.season if q.season else "Unknown"
-        seasons[sea] = seasons.get(sea, 0) + 1
-    db.close()
-    return {
-        "total_queries": len(queries),
-        "locations": locations,
-        "seasons": seasons
-    }
-
 @app.get("/api/admin/data")
-
 def get_admin_data(username: str = Depends(verify_admin)):
     db = SessionLocal()
-    queries = db.query(FarmQuery).all()
+    queries = db.query(FarmQuery).order_by(FarmQuery.timestamp.desc()).all()
+    user_count = db.query(User).count()
+    post_count = db.query(CommunityPost).count()
     
     locations = {}
     seasons = {}
+    recent_activity = []
+    
     for q in queries:
         loc = q.location if q.location else "Unknown"
         locations[loc] = locations.get(loc, 0) + 1
         sea = q.season if q.season else "Unknown"
         seasons[sea] = seasons.get(sea, 0) + 1
         
+    # Get last 5 for activity table
+    for q in queries[:5]:
+        recent_activity.append({
+            "location": q.location,
+            "soil": q.soil,
+            "season": q.season,
+            "time": q.timestamp.strftime("%H:%M, %d %b")
+        })
+        
     db.close()
     
     return {
         "total_queries": len(queries),
+        "total_users": user_count,
+        "total_posts": post_count,
         "locations": locations,
-        "seasons": seasons
+        "seasons": seasons,
+        "recent": recent_activity
     }
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -639,49 +646,110 @@ def get_admin_page(username: str = Depends(verify_admin)):
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KrishiSankalp Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>Admin Dashboard | KrishiSankalp</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; color: #333; }
-        .header { text-align: center; margin-bottom: 40px; }
-        .header h1 { color: #002244; margin: 0; }
-        .header p { color: #555; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .stat-card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center; border-top: 4px solid #107c41; }
-        .stat-card h3 { margin: 0 0 10px 0; color: #555; }
-        .stat-card .value { font-size: 2.5em; font-weight: bold; color: #107c41; }
-        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; }
-        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; align-items: center; }
-        .back-btn { display: inline-block; margin-bottom: 20px; color: #0055a4; text-decoration: none; font-weight: bold; }
+        :root { --sidebar-w: 240px; --primary: #002244; --accent: #107c41; --bg: #f0f2f5; --text: #333; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); margin: 0; display: flex; color: var(--text); }
+        
+        /* Sidebar */
+        .sidebar { width: var(--sidebar-w); height: 100vh; background: var(--primary); color: white; position: fixed; padding: 20px; }
+        .sidebar h2 { font-size: 1.2em; margin-bottom: 30px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px; }
+        .nav-item { padding: 12px 15px; margin-bottom: 5px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 0.9em; transition: 0.3s; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.1); color: #FF9933; }
+        
+        /* Main Content */
+        .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+        .top-bar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .content { padding: 30px; }
+        
+        /* Widgets */
+        .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-widget { background: white; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; }
+        .stat-info h4 { margin: 0; font-size: 0.8em; color: #888; text-transform: uppercase; }
+        .stat-info div { font-size: 1.8em; font-weight: 700; color: var(--primary); margin-top: 5px; }
+        .stat-icon { width: 45px; height: 45px; background: #e8f5e9; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent); font-size: 1.2em; }
+        
+        /* Charts & Table */
+        .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; margin-bottom: 30px; }
+        .panel { background: white; padding: 20px; border-radius: 12px; border: 1px solid #eee; }
+        .panel h3 { margin: 0 0 20px 0; font-size: 1em; color: var(--primary); display: flex; justify-content: space-between; }
+        
+        .table-wrap { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { text-align: left; padding: 12px; border-bottom: 2px solid #f0f0f0; color: #888; }
+        td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; background: #e3f2fd; color: #1976d2; }
+        
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .grid-2 { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
-    <a href="/" class="back-btn">← Back to Main App</a>
-    <div class="header">
-        <h1>KrishiSankalp Admin Analytics</h1>
-        <p>Real-time platform usage and farmer demographics</p>
+    <div class="sidebar">
+        <h2>KrishiSankalp</h2>
+        <div class="nav-item active">📊 Dashboard</div>
+        <div class="nav-item">👥 Users</div>
+        <div class="nav-item">🌍 Community</div>
+        <div class="nav-item" onclick="window.location.href='/'">🏠 View Site</div>
     </div>
 
-    <div class="stats-grid">
-        <div class="stat-card">
-            <h3>Total Recommendations</h3>
-            <div class="value" id="totalQueries">-</div>
+    <div class="main">
+        <div class="top-bar">
+            <span style="font-weight: 600; color: #666;">Analytics Overview</span>
+            <div style="font-size: 0.9em; color: #888;">Admin Session: <b>Active</b></div>
         </div>
-        <div class="stat-card">
-            <h3>Active States</h3>
-            <div class="value" id="activeStates">-</div>
-        </div>
-    </div>
 
-    <div class="charts-grid">
-        <div class="chart-container">
-            <h3 style="margin-top:0; color:#002244; align-self:flex-start;">Queries by State</h3>
-            <canvas id="locationChart"></canvas>
-        </div>
-        <div class="chart-container">
-            <h3 style="margin-top:0; color:#002244; align-self:flex-start;">Popular Seasons</h3>
-            <canvas id="seasonChart"></canvas>
+        <div class="content">
+            <div class="stats-row">
+                <div class="stat-widget">
+                    <div class="stat-info"><h4>Total Farmers</h4><div id="totalUsers">-</div></div>
+                    <div class="stat-icon">👤</div>
+                </div>
+                <div class="stat-widget">
+                    <div class="stat-info"><h4>Platform Queries</h4><div id="totalQueries">-</div></div>
+                    <div class="stat-icon">📈</div>
+                </div>
+                <div class="stat-widget">
+                    <div class="stat-info"><h4>Success Stories</h4><div id="totalPosts">-</div></div>
+                    <div class="stat-icon">✨</div>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <div class="panel">
+                    <h3>Demand by Region <small style="font-weight:400; color:#999;">(Top 10)</small></h3>
+                    <div style="height: 250px;"><canvas id="locationChart"></canvas></div>
+                </div>
+                <div class="panel">
+                    <h3>Seasonal Activity</h3>
+                    <div style="height: 250px;"><canvas id="seasonChart"></canvas></div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3>Recent Platform Activity</h3>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Location</th>
+                                <th>Soil Type</th>
+                                <th>Season</th>
+                                <th>Timestamp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTable">
+                            <!-- Data injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -689,44 +757,43 @@ def get_admin_page(username: str = Depends(verify_admin)):
         async function loadData() {
             try {
                 const res = await fetch('/api/admin/data');
-                if (res.status === 401) {
-                    alert("Unauthorized!");
-                    return;
-                }
+                if (res.status === 401) { window.location.href = '/login'; return; }
                 const data = await res.json();
 
                 document.getElementById('totalQueries').innerText = data.total_queries;
-                document.getElementById('activeStates').innerText = Object.keys(data.locations).length;
+                document.getElementById('totalUsers').innerText = data.total_users;
+                document.getElementById('totalPosts').innerText = data.total_posts;
 
+                // Recent Table
+                document.getElementById('recentTable').innerHTML = data.recent.map(r => `
+                    <tr>
+                        <td><b>${r.location}</b></td>
+                        <td><span class="badge">${r.soil}</span></td>
+                        <td>${r.season}</td>
+                        <td style="color:#999;">${r.time}</td>
+                    </tr>
+                `).join('');
+
+                // Charts
+                const sortedLocs = Object.entries(data.locations).sort((a,b) => b[1]-a[1]).slice(0, 10);
                 new Chart(document.getElementById('locationChart'), {
                     type: 'bar',
                     data: {
-                        labels: Object.keys(data.locations),
-                        datasets: [{
-                            label: 'Number of Queries',
-                            data: Object.values(data.locations),
-                            backgroundColor: '#0055a4',
-                            borderRadius: 4
-                        }]
+                        labels: sortedLocs.map(x => x[0]),
+                        datasets: [{ data: sortedLocs.map(x => x[1]), backgroundColor: '#002244', borderRadius: 4 }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
                 });
 
                 new Chart(document.getElementById('seasonChart'), {
                     type: 'doughnut',
                     data: {
                         labels: Object.keys(data.seasons),
-                        datasets: [{
-                            data: Object.values(data.seasons),
-                            backgroundColor: ['#107c41', '#f1c40f', '#d35400', '#2980b9']
-                        }]
+                        datasets: [{ data: Object.values(data.seasons), backgroundColor: ['#FF9933', '#107c41', '#002244', '#f1c40f'], borderWidth: 0 }]
                     },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '75%' }
                 });
-
-            } catch (err) {
-                console.error("Failed to load admin data", err);
-            }
+            } catch (err) { console.error(err); }
         }
         loadData();
     </script>
