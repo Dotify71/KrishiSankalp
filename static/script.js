@@ -413,20 +413,38 @@ function displayResults(data) {
             hint = "Free tier limit for new polygons reached.";
         }
 
-        let mapHtml = `<div style="text-align:center;"><span style="color:#2e7d32; font-weight:bold;">🛰️ Satellite Data: ${statusMsg}</span><p style="font-size:0.8em; color:#666;">${hint}</p></div>`;
-        
-        if (data.yield.map_url) {
-            mapHtml = `
-                <div style="position:relative; width:100%; height:100%; background: #000;">
-                    <img src="${data.yield.map_url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px; filter: contrast(1.1) brightness(1.1); image-rendering: -webkit-optimize-contrast;" alt="Satellite View">
-                    <div style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.7); color:white; padding:4px 10px; border-radius:4px; font-size:0.75em; font-weight:bold; backdrop-filter: blur(4px);">
-                        🛰️ Latest Satellite View
-                    </div>
-                </div>
-            `;
-        }
-
+        let mapHtml = `<div id="mapContainer" style="width:100%; height:100%; border-radius:8px;"></div>`;
         document.getElementById('ndviMap').innerHTML = mapHtml;
+        document.getElementById('ndviMap').style.display = 'block';
+
+        // Initialize or update Leaflet map
+        setTimeout(() => {
+            if (window.leafMap) {
+                window.leafMap.remove();
+            }
+            
+            // Center map on user coordinates
+            const map = L.map('mapContainer').setView([currentLat, currentLon], 15);
+            window.leafMap = map;
+
+            // Add Satellite Hybrid Layer (Esri)
+            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            }).addTo(map);
+
+            // Add a marker for the farm
+            L.marker([currentLat, currentLon]).addTo(map)
+                .bindPopup(`<b>Your Farm</b><br>NDVI: ${data.yield.value}`).openPopup();
+
+            // Overlay the NDVI tile if available from AgroMonitoring
+            if (data.yield.map_url) {
+                const imageBounds = [
+                    [currentLat - 0.01, currentLon - 0.01], 
+                    [currentLat + 0.01, currentLon + 0.01]
+                ];
+                L.imageOverlay(data.yield.map_url, imageBounds, {opacity: 0.7}).addTo(map);
+            }
+        }, 100);
 
         if (data.yield.value > 0) {
             document.getElementById('ndviData').innerHTML = `
