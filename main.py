@@ -48,8 +48,26 @@ def keep_alive_ping():
             logger.error(f"Keep-alive self-ping failed: {e}")
         time.sleep(600)
 
+def seed_db():
+    try:
+        db = SessionLocal()
+        if db.query(CommunityPost).count() == 0:
+            logger.info("Seeding community database with default stories...")
+            seeds = [
+                CommunityPost(author="Rajesh Kumar", location="Ludhiana, Punjab", content="The AI correctly identified Wheat Rust on my farm. I followed the organic treatment and saved 2 acres of crop!", tag="Saved Crop"),
+                CommunityPost(author="Amit Patil", location="Nashik, Maharashtra", content="Checking market prices here helped me sell my onions at ₹400/quintal more than the local mandi price.", tag="Higher Profit"),
+                CommunityPost(author="S. Venkatesh", location="Kurnool, Andhra", content="Recommended the PB-1121 Basmati variety. The yield was 20% higher than my traditional seeds.", tag="Higher Yield"),
+                CommunityPost(author="Gurminder Singh", location="Amritsar, Punjab", content="The satellite monitoring warned me about crop stress early. A quick irrigation saved my mustard field.", tag="Early Warning")
+            ]
+            db.add_all(seeds)
+            db.commit()
+        db.close()
+    except Exception as e:
+        logger.error(f"Seeding failed: {e}")
+
 @app.on_event("startup")
 async def startup_event():
+    seed_db()
     # Start the keep-alive thread in the background
     threading.Thread(target=keep_alive_ping, daemon=True).start()
 
