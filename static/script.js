@@ -578,15 +578,41 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    try {
+    async function attemptDiagnosis(formDataPayload, isRetry = false) {
         const res = await fetch('/api/diagnose', {
             method: 'POST',
-            body: formData
+            body: formDataPayload
         });
+        return res;
+    }
+
+    try {
+        let res;
+        try {
+            res = await attemptDiagnosis(formData);
+        } catch (firstErr) {
+            // Server may be waking up from sleep (Render free tier cold start)
+            // Wait 4 seconds and retry once
+            loadingArea.querySelector('p').innerText = "Server is waking up, retrying...";
+            await new Promise(resolve => setTimeout(resolve, 4000));
+            res = await attemptDiagnosis(formData);
+        }
+
+        // Handle HTTP errors (e.g. FastAPI raises HTTPException with {"detail": "..."})
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            const msg = errData.detail || errData.error || `Server error (${res.status})`;
+            loadingArea.style.display = 'none';
+            uploadArea.style.display = 'block';
+            alert(`Diagnosis failed: ${msg}`);
+            return;
+        }
+
         const data = await res.json();
 
         loadingArea.style.display = 'none';
         
+        // Handle soft errors returned with 200 status
         if (data.error) {
             uploadArea.style.display = 'block';
             alert(data.error);
@@ -627,7 +653,7 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
     } catch (err) {
         loadingArea.style.display = 'none';
         uploadArea.style.display = 'block';
-        alert("Failed to connect to diagnosis AI.");
+        alert("Failed to connect to diagnosis AI. The server may be starting up — please wait 30 seconds and try again.");
     }
 });
 // --- Voice Assistance (TTS) ---
