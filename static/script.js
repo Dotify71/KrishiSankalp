@@ -390,17 +390,37 @@ function displayResults(data) {
     
     // Display Satellite Yield Data
     if (data.yield && data.yield.status !== "No data") {
-        document.getElementById('ndviMap').innerHTML = `<div style="text-align:center;"><span style="color:#2e7d32; font-weight:bold;">🛰️ Satellite Data Active</span><p style="font-size:0.8em; color:#666;">Showing NDVI analysis for your coordinates</p></div>`;
-        document.getElementById('ndviData').innerHTML = `
-            <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
-                <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldValue}</p>
-                <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.value}</p>
-            </div>
-            <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
-                <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldStatus}</p>
-                <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.status}</p>
-            </div>
-        `;
+        const status = data.yield.status;
+        let statusMsg = status;
+        let hint = "Showing NDVI analysis for your coordinates";
+        
+        if (status === "API Key Missing") {
+            statusMsg = "API Key Missing";
+            hint = "Please set AGRO_API_KEY in Render environment variables.";
+        } else if (status === "Waiting for Satellite Pass") {
+            statusMsg = "Satellite Pass Pending";
+            hint = "Wait 2-3 days for the satellite to pass over your farm.";
+        } else if (status === "Polygon Limit Reached") {
+            statusMsg = "Area Limit Reached";
+            hint = "Free tier limit for new polygons reached.";
+        }
+
+        document.getElementById('ndviMap').innerHTML = `<div style="text-align:center;"><span style="color:#2e7d32; font-weight:bold;">🛰️ Satellite Data: ${statusMsg}</span><p style="font-size:0.8em; color:#666;">${hint}</p></div>`;
+        
+        if (data.yield.value > 0) {
+            document.getElementById('ndviData').innerHTML = `
+                <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
+                    <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldValue}</p>
+                    <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.value}</p>
+                </div>
+                <div style="background:#f1f8e9; padding:15px; border-radius:8px; border-left:4px solid #2e7d32;">
+                    <p style="margin:0; font-size:0.8em; color:#2e7d32; font-weight:bold;">${t.resYieldStatus}</p>
+                    <p style="margin:5px 0 0 0; font-size:1.5em; font-weight:bold;">${data.yield.status}</p>
+                </div>
+            `;
+        } else {
+            document.getElementById('ndviData').innerHTML = '';
+        }
     } else {
         document.getElementById('ndviMap').innerHTML = `<div style="text-align:center; color:#999;"><p>Satellite Data Pending Verification</p><p style="font-size:0.8em;">(Requires Active AgroMonitoring Subscription)</p></div>`;
         document.getElementById('ndviData').innerHTML = '';

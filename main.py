@@ -413,56 +413,73 @@ def get_recommendation(data: FarmData):
 
     # --- 7. Satellite Yield Analysis (AgroMonitoring) ---
     ndvi_data = {"status": "No data", "value": 0}
-    if lat and lon and AGRO_API_KEY:
-        try:
-            # 7a. Create a small polygon for the farm if not exists
-            # For demo, we use a 100m buffer around the lat/lon
-            poly_name = f"farm_{data.location.replace(' ', '_')}"
-            agro_url = f"http://api.agromonitoring.com/agro/1.0/polygons?appid={AGRO_API_KEY}"
-            
-            # Simple 0.001 degree square (~111m)
-            coords = [
-                [lon - 0.001, lat - 0.001], [lon + 0.001, lat - 0.001],
-                [lon + 0.001, lat + 0.001], [lon - 0.001, lat + 0.001],
-                [lon - 0.001, lat - 0.001]
-            ]
-            
-            poly_res = requests.post(agro_url, json={
-                "name": poly_name,
-                "geo_json": {
-                    "type": "Feature", "properties": {},
-                    "geometry": {"type": "Polygon", "coordinates": [coords]}
-                }
-            }, timeout=2)
-            
-            poly_id = None
-            if poly_res.status_code in [201, 400]: # 400 if already exists
+    if lat and lon:
+        if not AGRO_API_KEY:
+            ndvi_data["status"] = "API Key Missing"
+        else:
+            try:
+                # 7a. Create a small polygon for the farm if not exists
+                poly_name = f"farm_{data.location.replace(' ', '_')}_{round(lat, 2)}_{round(lon, 2)}"
+                agro_url = f"https://api.agromonitoring.com/agro/1.0/polygons?appid={AGRO_API_KEY}"
+                
+                # Simple 0.001 degree square (~111m)
+                coords = [
+                    [lon - 0.0005, lat - 0.0005], [lon + 0.0005, lat - 0.0005],
+                    [lon + 0.0005, lat + 0.0005], [lon - 0.0005, lat + 0.0005],
+                    [lon - 0.0005, lat - 0.0005]
+                ]
+                
+                poly_res = requests.post(agro_url, json={
+                    "name": poly_name,
+                    "geo_json": {
+                        "type": "Feature", "properties": {},
+                        "geometry": {"type": "Polygon", "coordinates": [coords]}
+                    }
+                }, timeout=3)
+                
+                poly_id = None
                 if poly_res.status_code == 201:
                     poly_id = poly_res.json()['id']
-                else:
-                    # Fetch existing
-                    list_res = requests.get(agro_url, timeout=2)
+                elif poly_res.status_code == 400: # Already exists or invalid
+                    # Try to fetch existing polygons to find a match
+                    list_res = requests.get(agro_url, timeout=3)
                     if list_res.status_code == 200:
                         for p in list_res.json():
                             if p['name'] == poly_name:
                                 poly_id = p['id']
                                 break
-            
-            if poly_id:
-                # 7b. Fetch NDVI Data
-                ndvi_url = f"http://api.agromonitoring.com/agro/1.0/ndvi/history?polyid={poly_id}&start={int(datetime.datetime.now().timestamp()) - 2592000}&end={int(datetime.datetime.now().timestamp())}&appid={AGRO_API_KEY}"
-                ndvi_res = requests.get(ndvi_url, timeout=2)
-                if ndvi_res.status_code == 200 and ndvi_res.json():
-                    latest = ndvi_res.json()[-1]
-                    ndvi_val = latest['data']['mean']
-                    status = "Excellent" if ndvi_val > 0.6 else "Good" if ndvi_val > 0.4 else "Moderate" if ndvi_val > 0.2 else "Low (Stress)"
-                    ndvi_data = {
-                        "status": status,
-                        "value": round(ndvi_val, 2),
-                        "map_url": f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}"
-                    }
-        except Exception as e:
-            logger.warning(f"Satellite analysis failed: {str(e)}")
+                
+                if poly_id:
+                    # 7b. Fetch NDVI Data (Vegetation Index)
+                    # We look back 30 days for the latest satellite pass
+                    end_time = int(datetime.datetime.now().timestamp())
+                    start_time = end_time - (30 * 24 * 60 * 60)
+                    ndvi_url = f"https://api.agromonitoring.com/agro/1.0/ndvi/history?polyid={poly_id}&start={start_time}&end={end_time}&appid={AGRO_API_KEY}"
+                    
+                    ndvi_res = requests.get(ndvi_url, timeout=3)
+                    if ndvi_res.status_code == 200:
+                        history = ndvi_res.json()
+                        if history:
+                            latest = history[-1]
+                            ndvi_val = latest['data']['mean']
+                            # NDVI Scale: 0 to 1 (0.2-0.4 is sparse veg, 0.6-0.9 is dense/healthy)
+                            status = "Excellent" if ndvi_val > 0.6 else "Good" if ndvi_val > 0.4 else "Moderate" if ndvi_val > 0.2 else "Low (Stress)"
+                            ndvi_data = {
+                                "status": status,
+                                "value": round(ndvi_val, 2),
+                                "map_url": f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}"
+                            }
+                        else:
+                            ndvi_data["status"] = "Waiting for Satellite Pass"
+                    else:
+                        logger.warning(f"NDVI Fetch Failed: {ndvi_res.text}")
+                        ndvi_data["status"] = "Data unavailable"
+                else:
+                    logger.warning(f"Polygon Creation/Link Failed: {poly_res.text}")
+                    ndvi_data["status"] = "Polygon Limit Reached"
+            except Exception as e:
+                logger.error(f"Satellite analysis failed: {str(e)}")
+                ndvi_data["status"] = "Service Error"
 
     return {
         "crops": regional_crops,
