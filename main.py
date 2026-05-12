@@ -447,41 +447,37 @@ def get_recommendation(data: FarmData):
                     [lon + offset, lat + offset], [lon - offset, lat + offset],
                     [lon - offset, lat - offset]
                 ]
-                
-                poly_res = requests.post(agro_url, json={
-                    "name": poly_name,
-                    "geo_json": {
-                        "type": "Feature", "properties": {},
-                        "geometry": {"type": "Polygon", "coordinates": [coords]}
-                    }
-                }, timeout=10)
-                
+
+                # Robust Polygon Management: List -> Update or Create
+                list_res = requests.get(agro_url, timeout=10)
                 poly_id = None
-                if poly_res.status_code == 201:
-                    poly_id = poly_res.json()['id']
-                else:
-                    # Limit reached or sync error: Let's be aggressive and clear the old polygon
-                    list_res = requests.get(agro_url, timeout=10)
-                    if list_res.status_code == 200:
-                        polygons = list_res.json()
-                        if polygons:
-                            # Delete the oldest polygon to make room for the new one
-                            old_id = polygons[0]['id']
-                            requests.delete(f"https://api.agromonitoring.com/agro/1.0/polygons/{old_id}?appid={AGRO_API_KEY}")
-                            
-                            # Try creating again now that space is cleared
-                            poly_res_retry = requests.post(agro_url, json={
-                                "name": poly_name,
-                                "geo_json": {
-                                    "type": "Feature", "properties": {},
-                                    "geometry": {"type": "Polygon", "coordinates": [coords]}
-                                }
-                            }, timeout=10)
-                            if poly_res_retry.status_code == 201:
-                                poly_id = poly_res_retry.json()['id']
-                            else:
-                                # Final fallback: just use whatever is left
-                                poly_id = old_id 
+                
+                if list_res.status_code == 200:
+                    polygons = list_res.json()
+                    if polygons:
+                        # Use the first existing polygon and update its coordinates
+                        poly_id = polygons[0]['id']
+                        update_url = f"https://api.agromonitoring.com/agro/1.0/polygons/{poly_id}?appid={AGRO_API_KEY}"
+                        requests.put(update_url, json={
+                            "name": poly_name,
+                            "geo_json": {
+                                "type": "Feature", "properties": {},
+                                "geometry": {"type": "Polygon", "coordinates": [coords]}
+                            }
+                        }, timeout=10)
+                        logger.info(f"Updated existing polygon {poly_id} for new location.")
+                
+                if not poly_id:
+                    # Create new if none exists
+                    poly_res = requests.post(agro_url, json={
+                        "name": poly_name,
+                        "geo_json": {
+                            "type": "Feature", "properties": {},
+                            "geometry": {"type": "Polygon", "coordinates": [coords]}
+                        }
+                    }, timeout=10)
+                    if poly_res.status_code == 201:
+                        poly_id = poly_res.json()['id']
                 
                 if poly_id:
                     end_time = int(datetime.datetime.now().timestamp())
