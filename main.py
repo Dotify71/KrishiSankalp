@@ -435,14 +435,14 @@ def get_recommendation(data: FarmData):
                         "type": "Feature", "properties": {},
                         "geometry": {"type": "Polygon", "coordinates": [coords]}
                     }
-                }, timeout=3)
+                }, timeout=10) # Increased timeout
                 
                 poly_id = None
                 if poly_res.status_code == 201:
                     poly_id = poly_res.json()['id']
-                elif poly_res.status_code == 400: # Already exists or invalid
-                    # Try to fetch existing polygons to find a match
-                    list_res = requests.get(agro_url, timeout=3)
+                elif poly_res.status_code == 400:
+                    # Try to fetch existing
+                    list_res = requests.get(agro_url, timeout=10)
                     if list_res.status_code == 200:
                         for p in list_res.json():
                             if p['name'] == poly_name:
@@ -450,19 +450,16 @@ def get_recommendation(data: FarmData):
                                 break
                 
                 if poly_id:
-                    # 7b. Fetch NDVI Data (Vegetation Index)
-                    # We look back 30 days for the latest satellite pass
                     end_time = int(datetime.datetime.now().timestamp())
-                    start_time = end_time - (30 * 24 * 60 * 60)
+                    start_time = end_time - (60 * 24 * 60 * 60) # 60 days for better chance of data
                     ndvi_url = f"https://api.agromonitoring.com/agro/1.0/ndvi/history?polyid={poly_id}&start={start_time}&end={end_time}&appid={AGRO_API_KEY}"
                     
-                    ndvi_res = requests.get(ndvi_url, timeout=3)
+                    ndvi_res = requests.get(ndvi_url, timeout=10)
                     if ndvi_res.status_code == 200:
                         history = ndvi_res.json()
                         if history:
                             latest = history[-1]
                             ndvi_val = latest['data']['mean']
-                            # NDVI Scale: 0 to 1 (0.2-0.4 is sparse veg, 0.6-0.9 is dense/healthy)
                             status = "Excellent" if ndvi_val > 0.6 else "Good" if ndvi_val > 0.4 else "Moderate" if ndvi_val > 0.2 else "Low (Stress)"
                             ndvi_data = {
                                 "status": status,
@@ -472,14 +469,14 @@ def get_recommendation(data: FarmData):
                         else:
                             ndvi_data["status"] = "Waiting for Satellite Pass"
                     else:
-                        logger.warning(f"NDVI Fetch Failed: {ndvi_res.text}")
-                        ndvi_data["status"] = "Data unavailable"
+                        ndvi_data["status"] = f"API Error ({ndvi_res.status_code})"
                 else:
-                    logger.warning(f"Polygon Creation/Link Failed: {poly_res.text}")
-                    ndvi_data["status"] = "Polygon Limit Reached"
+                    ndvi_data["status"] = "Polygon Sync Error"
+            except requests.exceptions.Timeout:
+                ndvi_data["status"] = "API Timeout"
             except Exception as e:
                 logger.error(f"Satellite analysis failed: {str(e)}")
-                ndvi_data["status"] = "Service Error"
+                ndvi_data["status"] = "Connection Error"
 
     return {
         "crops": regional_crops,
