@@ -417,10 +417,10 @@ function displayResults(data) {
         
         if (data.yield.map_url) {
             mapHtml = `
-                <div style="position:relative; width:100%; height:100%;">
-                    <img src="${data.yield.map_url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px;" alt="Satellite View">
-                    <div style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.6); color:white; padding:4px 8px; border-radius:4px; font-size:0.7em;">
-                        Latest Satellite Pass
+                <div style="position:relative; width:100%; height:100%; background: #000;">
+                    <img src="${data.yield.map_url}" style="width:100%; height:100%; object-fit:cover; border-radius:8px; filter: contrast(1.1) brightness(1.1); image-rendering: -webkit-optimize-contrast;" alt="Satellite View">
+                    <div style="position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.7); color:white; padding:4px 10px; border-radius:4px; font-size:0.75em; font-weight:bold; backdrop-filter: blur(4px);">
+                        🛰️ Latest Satellite View
                     </div>
                 </div>
             `;
