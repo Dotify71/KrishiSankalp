@@ -436,19 +436,27 @@ def get_recommendation(data: FarmData):
                         "type": "Feature", "properties": {},
                         "geometry": {"type": "Polygon", "coordinates": [coords]}
                     }
-                }, timeout=10) # Increased timeout
+                }, timeout=10)
                 
                 poly_id = None
                 if poly_res.status_code == 201:
                     poly_id = poly_res.json()['id']
-                elif poly_res.status_code == 400:
-                    # Try to fetch existing
+                else:
+                    # If creation failed (usually because limit reached or duplicate), 
+                    # fetch ALL polygons and use the most recent one.
                     list_res = requests.get(agro_url, timeout=10)
                     if list_res.status_code == 200:
-                        for p in list_res.json():
-                            if p['name'] == poly_name:
-                                poly_id = p['id']
-                                break
+                        polygons = list_res.json()
+                        if polygons:
+                            # Try to find our specific one first
+                            for p in polygons:
+                                if p['name'] == poly_name:
+                                    poly_id = p['id']
+                                    break
+                            # Fallback: Just use the first available polygon if we're at the limit
+                            if not poly_id:
+                                poly_id = polygons[0]['id']
+                                logger.info(f"Reusing existing polygon {poly_id} due to limit.")
                 
                 if poly_id:
                     end_time = int(datetime.datetime.now().timestamp())
