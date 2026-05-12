@@ -413,49 +413,54 @@ function displayResults(data) {
             hint = "Free tier limit for new polygons reached.";
         }
 
-        let mapHtml = `<div id="mapContainer" style="width:100%; height:400px; border-radius:12px; border: 2px solid #e8f5e9; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></div>`;
+        let mapHtml = `<div id="mapContainer" style="width:100%; height:400px; border-radius:12px; touch-action: none; z-index: 10;"></div>
+                       <div id="mapControls" style="margin-top: 10px; display: flex; gap: 10px;">
+                           <button onclick="toggleNDVI()" id="ndviBtn" style="flex:1; padding: 8px; background: #2e7d32; color: white; border: none; border-radius: 5px; font-size: 0.8em; font-weight: bold;">Show Crop Health Overlay</button>
+                       </div>`;
         document.getElementById('ndviMap').innerHTML = mapHtml;
-        document.getElementById('ndviMap').style.height = '400px';
+        document.getElementById('ndviMap').style.height = 'auto';
         document.getElementById('ndviMap').style.display = 'block';
 
-        // Final Robust Leaflet Initialization
         setTimeout(() => {
-            if (window.leafMap) {
-                window.leafMap.remove();
-            }
+            if (window.leafMap) { window.leafMap.remove(); }
             
-            // Center map with a nice zoom level (16 is great for farm detail)
+            // Use Google Satellite (Sharper in India)
             const map = L.map('mapContainer', {
-                scrollWheelZoom: true,
-                touchZoom: true
+                tap: false, // Fixes mobile touch issues
+                zoomControl: true
             }).setView([currentLat, currentLon], 16);
             window.leafMap = map;
 
-            // Add High-Res Satellite Hybrid Layer
-            L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Esri Satellite'
+            L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains:['mt0','mt1','mt2','mt3'],
+                attribution: 'Google Satellite'
             }).addTo(map);
 
-            // Add marker with a custom green icon pulse effect would be cool, but standard for now
-            L.marker([currentLat, currentLon]).addTo(map)
-                .bindPopup(`<b>Farm Location</b><br>Health Index: ${data.yield.value}`).openPopup();
+            L.marker([currentLat, currentLon]).addTo(map).bindPopup("<b>Your Farm</b>").openPopup();
 
-            // Overlay the NDVI tile if available (Perfectly aligned with 0.007 offset)
+            // Prepare NDVI overlay but don't show it yet to avoid blur
             if (data.yield.map_url) {
                 const offset = 0.007;
-                const imageBounds = [
-                    [currentLat - offset, currentLon - offset], 
-                    [currentLat + offset, currentLon + offset]
-                ];
-                L.imageOverlay(data.yield.map_url, imageBounds, {
-                    opacity: 0.6,
-                    interactive: false
-                }).addTo(map);
+                const imageBounds = [[currentLat - offset, currentLon - offset], [currentLat + offset, currentLon + offset]];
+                window.ndviOverlay = L.imageOverlay(data.yield.map_url, imageBounds, { opacity: 0.7 });
             }
             
-            // Fix Leaflet's gray tile issue on load
             map.invalidateSize();
         }, 200);
+
+        window.toggleNDVI = function() {
+            const btn = document.getElementById('ndviBtn');
+            if (window.leafMap.hasLayer(window.ndviOverlay)) {
+                window.leafMap.removeLayer(window.ndviOverlay);
+                btn.innerText = "Show Crop Health Overlay";
+                btn.style.background = "#2e7d32";
+            } else if (window.ndviOverlay) {
+                window.ndviOverlay.addTo(window.leafMap);
+                btn.innerText = "Hide Crop Health Overlay";
+                btn.style.background = "#c62828";
+            }
+        };
 
         if (data.yield.value > 0) {
             document.getElementById('ndviData').innerHTML = `
