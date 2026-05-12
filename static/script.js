@@ -187,6 +187,36 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Auto-request location for precision
+    async function reverseGeocode(lat, lon) {
+        try {
+            console.log("Attempting reverse geocoding for:", lat, lon);
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+            const data = await res.json();
+            
+            if (data && data.address) {
+                const addr = data.address;
+                // Indian districts are often in 'state_district', 'district', or 'city'
+                const district = addr.state_district || addr.district || addr.city || addr.suburb;
+                const state = addr.state;
+                
+                if (district && state) {
+                    const locationStr = `${district}, ${state}`;
+                    console.log("Detected Location:", locationStr);
+                    
+                    // Try to find and set in TomSelect
+                    const ts = tomInstances['location'];
+                    if (ts) {
+                        // Check if option exists, if not add it (TomSelect with create:true handles this but we want to be sure)
+                        ts.addOption({value: locationStr, text: locationStr});
+                        ts.setValue(locationStr);
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Reverse geocoding failed:", err);
+        }
+    }
+
     function requestLocation(isRetry = false) {
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -195,6 +225,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                     currentLon = pos.coords.longitude;
                     console.log("GPS Precision Active:", currentLat, currentLon);
                     document.getElementById('locationModal').style.display = 'none';
+                    
+                    // NEW: Automatically fill the location field
+                    reverseGeocode(currentLat, currentLon);
                 },
                 (err) => {
                     console.warn("GPS Permission Denied or Unavailable.", err.message);
