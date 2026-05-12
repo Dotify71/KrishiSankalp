@@ -724,15 +724,19 @@ def add_community_post(post: PostCreate):
 @app.post("/api/diagnose")
 async def diagnose_crop(file: UploadFile = File(...)):
     if not KINDWISE_TOKEN:
-        raise HTTPException(status_code=500, detail="Kindwise API key missing")
+        logger.error("Kindwise API key (KINDWISE_TOKEN) is missing.")
+        raise HTTPException(status_code=500, detail="AI Diagnosis configuration error: API key missing.")
     
     try:
         # Read and encode image to base64
         contents = await file.read()
+        # Memory check: If image is somehow still > 15MB, warn
+        if len(contents) > 15 * 1024 * 1024:
+            return {"error": "Image file too large. Please upload a smaller photo."}
+
         encoded_image = base64.b64encode(contents).decode("utf-8")
         
         # Call Kindwise (Plant.id) Health Assessment API
-        # Documentation: https://plant.id/docs/api/v3
         url = "https://plant.id/api/v3/health_assessment"
         headers = {
             "Api-Key": KINDWISE_TOKEN,
@@ -745,11 +749,19 @@ async def diagnose_crop(file: UploadFile = File(...)):
             "similar_images": True
         }
         
-        response = requests.post(url, headers=headers, json=payload, timeout=10)
-        
-        if response.status_code != 201:
-            logger.error(f"Kindwise Error: {response.text}")
-            return {"error": "AI Engine busy. Please try again later.", "details": response.text}
+        # Increase timeout for large mobile uploads and add a simple retry logic
+        for attempt in range(2):
+            try:
+                response = requests.post(url, headers=headers, json=payload, timeout=45)
+                if response.status_code == 201:
+                    break
+                logger.warning(f"Kindwise Attempt {attempt+1} failed: {response.status_code} - {response.text}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Kindwise Attempt {attempt+1} timed out or failed: {str(e)}")
+                if attempt == 1: raise e
+                time.sleep(2)
+        else:
+            return {"error": "AI Engine is currently busy or unresponsive. Please try again in a moment."}
             
         data = response.json()
         result = data.get("result", {})
@@ -788,8 +800,8 @@ async def diagnose_crop(file: UploadFile = File(...)):
         }
         
     except Exception as e:
-        logger.error(f"Diagnosis Failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Diagnosis Critical Failure: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error during diagnosis.")
 
 # --- 4. Serve Frontend ---
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

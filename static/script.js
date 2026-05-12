@@ -563,6 +563,53 @@ function showTab(event, tabName) {
     document.getElementById(tabName).classList.add('active');
 }
 // --- AI Disease Diagnosis Logic ---
+async function compressImage(file, maxWidth = 1024, quality = 0.7) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxWidth) {
+                        width *= maxWidth / height;
+                        height = maxWidth;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+
+                canvas.toBlob((blob) => {
+                    if (blob) {
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        resolve(compressedFile);
+                    } else {
+                        reject(new Error('Canvas toBlob failed'));
+                    }
+                }, 'image/jpeg', quality);
+            };
+            img.onerror = (err) => reject(err);
+        };
+        reader.onerror = (err) => reject(err);
+    });
+}
+
 document.getElementById('imageInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -575,26 +622,26 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
     loadingArea.style.display = 'block';
     resultArea.style.display = 'none';
 
-    const formData = new FormData();
-    formData.append('file', file);
-
-    async function attemptDiagnosis(formDataPayload, isRetry = false) {
-        const res = await fetch('/api/diagnose', {
+    async function attemptDiagnosis(formDataPayload) {
+        return await fetch('/api/diagnose', {
             method: 'POST',
             body: formDataPayload
         });
-        return res;
     }
 
     try {
+        const compressedFile = await compressImage(file);
+        const formData = new FormData();
+        formData.append('file', compressedFile);
+
         let res;
         try {
             res = await attemptDiagnosis(formData);
         } catch (firstErr) {
             // Server may be waking up from sleep (Render free tier cold start)
-            // Wait 4 seconds and retry once
+            // Wait 6 seconds and retry once
             loadingArea.querySelector('p').innerText = "Server is waking up, retrying...";
-            await new Promise(resolve => setTimeout(resolve, 4000));
+            await new Promise(resolve => setTimeout(resolve, 6000));
             res = await attemptDiagnosis(formData);
         }
 
