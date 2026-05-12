@@ -419,14 +419,15 @@ def get_recommendation(data: FarmData):
         else:
             try:
                 # 7a. Create a small polygon for the farm if not exists
-                poly_name = f"farm_{data.location.replace(' ', '_')}_{round(lat, 2)}_{round(lon, 2)}"
+                # Using a 0.005 degree square (~550m) for better satellite coverage
+                poly_name = f"ks_farm_{round(lat, 4)}_{round(lon, 4)}"
                 agro_url = f"https://api.agromonitoring.com/agro/1.0/polygons?appid={AGRO_API_KEY}"
                 
-                # Simple 0.001 degree square (~111m)
+                offset = 0.0025
                 coords = [
-                    [lon - 0.0005, lat - 0.0005], [lon + 0.0005, lat - 0.0005],
-                    [lon + 0.0005, lat + 0.0005], [lon - 0.0005, lat + 0.0005],
-                    [lon - 0.0005, lat - 0.0005]
+                    [lon - offset, lat - offset], [lon + offset, lat - offset],
+                    [lon + offset, lat + offset], [lon - offset, lat + offset],
+                    [lon - offset, lat - offset]
                 ]
                 
                 poly_res = requests.post(agro_url, json={
