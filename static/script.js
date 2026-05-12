@@ -94,13 +94,21 @@ const translations = {
         title: "🌾 ਏਆਈ ਕ੍ਰਿਸ਼ੀ ਸਹਿਯੋਗੀ", subtitle: "ਸਮਾਰਟ ਖੇਤੀ ਫਸਲ ਸਿਫਾਰਸ਼ ਪ੍ਰਣਾਲੀ", btn: "ਏਆਈ ਸਿਫਾਰਸ਼ ਪ੍ਰਾਪਤ ਕਰੋ",
         farmDetails: "ਖੇਤ ਦੇ ਵੇਰਵੇ", labelLocation: "ਸਥਾਨ", labelSoil: "ਮਿੱਟੀ ਦੀ ਕਿਸਮ", labelSeason: "ਸੀਜ਼ਨ",
         btnListen: "🔊 ਸੁਣੋ", btnPrint: "🖨️ ਪ੍ਰਿੰਟ", headDiagnosis: "ਏਆਈ ਬਿਮਾਰੀ ਦੀ ਜਾਂਚ",
-        btnUpload: "📸 ਫੋਟੋ ਲਓ ਜਾਂ ਅਪਲੋਡ ਕਰੋ", analyzing: "ਏਆਈ ਤੁਹਾਡੀ ਫਸਲ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰ ਰਿਹਾ ਹੈ...", healthy: "ਸਿਹਤਮੰਦ", sick: "ਬਿਮਾਰੀ ਦਾ ਪਤਾ ਲੱਗਿਆ"
+        btnUpload: "📸 ਫੋਟੋ ਲਓ ਜਾਂ ਅਪਲੋਡ ਕਰੋ", analyzing: "ਏਆਈ ਤੁਹਾਡੀ ਫਸਲ ਦਾ ਵਿਸ਼ਲੇਸ਼ਣ ਕਰ ਰਿਹਾ ਹੈ...", healthy: "ਸਿਹਤਮੰਦ", sick: "ਬਿਮਾਰੀ ਦਾ ਪਤਾ ਲੱਗਿਆ",
+        speechIntro: "{location} ਲਈ ਤੁਹਾਡੀ ਕ੍ਰਿਸ਼ੀ ਸੰਕਲਪ ਸਿਫਾਰਸ਼ ਇੱਥੇ ਹੈ। ",
+        speechWeather: "ਮੌਜੂਦਾ ਤਾਪਮਾਨ {temp} ਹੈ ਅਤੇ {rain} ਵਰਖਾ ਹੋ ਰਹੀ ਹੈ। ",
+        speechCrops: "ਅਸੀਂ ਹੇਠ ਲਿਖੀਆਂ ਫਸਲਾਂ ਦੀ ਸਿਫਾਰਸ਼ ਕਰਦੇ ਹਾਂ: ",
+        speechCropDetail: "{name}। ਸੰਭਾਵਿਤ ਝਾੜ {yield} ਹੈ, ਅਤੇ ਮਾਰਕੀਟ ਕੀਮਤ {price} ਰੁਪਏ ਪ੍ਰਤੀ ਕੁਇੰਟਲ ਹੈ। "
     },
     mr: { // Marathi
         title: "🌾 एआय कृषी सहयोगी", subtitle: "स्मार्ट शेती पीक शिफारस प्रणाली", btn: "एआय शिफारस मिळवा",
         farmDetails: "शेत तपशील", labelLocation: "स्थान", labelSoil: "मातीचा प्रकार", labelSeason: "हंगाम",
         btnListen: "🔊 ऐका", btnPrint: "🖨️ प्रिंट", headDiagnosis: "एआय रोग निदान",
-        btnUpload: "📸 फोटो घ्या किंवा अपलोड करा", analyzing: "एआय आपल्या पिकाचे विश्लेषण करत आहे...", healthy: "निरोगी", sick: "रोग आढळला"
+        btnUpload: "📸 फोटो घ्या किंवा अपलोड करा", analyzing: "एआय आपल्या पिकाचे विश्लेषण करत आहे...", healthy: "निरोगी", sick: "रोग आढळला",
+        speechIntro: "{location} साठी तुमची कृषी संकल्प शिफारस येथे आहे। ",
+        speechWeather: "सध्याचे तापमान {temp} आहे आणि {rain} पाऊस पडत आहे। ",
+        speechCrops: "आम्ही खालील पिकांची शिफारस करतो: ",
+        speechCropDetail: "{name}। अपेक्षित उत्पन्न {yield} आहे, आणि बाजार भाव {price} रुपये प्रति क्विंटल आहे। "
     }
 };
 
@@ -622,3 +630,57 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
         alert("Failed to connect to diagnosis AI.");
     }
 });
+// --- Voice Assistance (TTS) ---
+let currentReportData = null;
+
+function speak(text, lang) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel(); // Stop any current speech
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Try to find a voice for the selected language
+    const voices = window.speechSynthesis.getVoices();
+    const voiceMap = {
+        'hi': 'hi-IN',
+        'pa': 'pa-IN',
+        'mr': 'mr-IN',
+        'en': 'en-IN'
+    };
+    
+    const targetLang = voiceMap[lang] || 'en-IN';
+    const voice = voices.find(v => v.lang.startsWith(targetLang));
+    if (voice) utterance.voice = voice;
+    utterance.lang = targetLang;
+    utterance.rate = 0.9; // Slightly slower for clarity
+    
+    window.speechSynthesis.speak(utterance);
+}
+
+document.getElementById('btnListen').addEventListener('click', () => {
+    if (!currentReportData) return;
+    
+    const lang = document.getElementById('langToggle').value;
+    const t = translations[lang];
+    if (!t || !t.speechIntro) return;
+
+    let text = t.speechIntro.replace('{location}', currentReportData.weather.location);
+    text += t.speechWeather.replace('{temp}', currentReportData.weather.temp).replace('{rain}', currentReportData.weather.rainfall);
+    text += t.speechCrops;
+    
+    currentReportData.crops.forEach(crop => {
+        text += t.speechCropDetail
+            .replace('{name}', crop.name)
+            .replace('{yield}', crop.yield)
+            .replace('{price}', crop.price);
+    });
+
+    speak(text, lang);
+});
+
+// Ensure voices are loaded (some browsers load them asynchronously)
+if (window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+        console.log("Voices loaded:", window.speechSynthesis.getVoices().length);
+    };
+}
