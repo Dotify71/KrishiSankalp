@@ -413,38 +413,49 @@ function displayResults(data) {
             hint = "Free tier limit for new polygons reached.";
         }
 
-        let mapHtml = `<div id="mapContainer" style="width:100%; height:100%; border-radius:8px;"></div>`;
+        let mapHtml = `<div id="mapContainer" style="width:100%; height:400px; border-radius:12px; border: 2px solid #e8f5e9; box-shadow: 0 4px 15px rgba(0,0,0,0.1);"></div>`;
         document.getElementById('ndviMap').innerHTML = mapHtml;
+        document.getElementById('ndviMap').style.height = '400px';
         document.getElementById('ndviMap').style.display = 'block';
 
-        // Initialize or update Leaflet map
+        // Final Robust Leaflet Initialization
         setTimeout(() => {
             if (window.leafMap) {
                 window.leafMap.remove();
             }
             
-            // Center map on user coordinates
-            const map = L.map('mapContainer').setView([currentLat, currentLon], 15);
+            // Center map with a nice zoom level (16 is great for farm detail)
+            const map = L.map('mapContainer', {
+                scrollWheelZoom: true,
+                touchZoom: true
+            }).setView([currentLat, currentLon], 16);
             window.leafMap = map;
 
-            // Add Satellite Hybrid Layer (Esri)
+            // Add High-Res Satellite Hybrid Layer
             L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+                attribution: 'Esri Satellite'
             }).addTo(map);
 
-            // Add a marker for the farm
+            // Add marker with a custom green icon pulse effect would be cool, but standard for now
             L.marker([currentLat, currentLon]).addTo(map)
-                .bindPopup(`<b>Your Farm</b><br>NDVI: ${data.yield.value}`).openPopup();
+                .bindPopup(`<b>Farm Location</b><br>Health Index: ${data.yield.value}`).openPopup();
 
-            // Overlay the NDVI tile if available from AgroMonitoring
+            // Overlay the NDVI tile if available (Perfectly aligned with 0.007 offset)
             if (data.yield.map_url) {
+                const offset = 0.007;
                 const imageBounds = [
-                    [currentLat - 0.01, currentLon - 0.01], 
-                    [currentLat + 0.01, currentLon + 0.01]
+                    [currentLat - offset, currentLon - offset], 
+                    [currentLat + offset, currentLon + offset]
                 ];
-                L.imageOverlay(data.yield.map_url, imageBounds, {opacity: 0.7}).addTo(map);
+                L.imageOverlay(data.yield.map_url, imageBounds, {
+                    opacity: 0.6,
+                    interactive: false
+                }).addTo(map);
             }
-        }, 100);
+            
+            // Fix Leaflet's gray tile issue on load
+            map.invalidateSize();
+        }, 200);
 
         if (data.yield.value > 0) {
             document.getElementById('ndviData').innerHTML = `
