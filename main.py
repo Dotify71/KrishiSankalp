@@ -462,10 +462,21 @@ def get_recommendation(data: FarmData):
                             latest = history[-1]
                             ndvi_val = latest['data']['mean']
                             status = "Excellent" if ndvi_val > 0.6 else "Good" if ndvi_val > 0.4 else "Moderate" if ndvi_val > 0.2 else "Low (Stress)"
+                            
+                            # Fetch the actual image tile (True Color or NDVI)
+                            image_search_url = f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}&start={start_time}&end={end_time}"
+                            img_search_res = requests.get(image_search_url, timeout=10)
+                            map_url = None
+                            if img_search_res.status_code == 200:
+                                img_data = img_search_res.json()
+                                if img_data:
+                                    # Get the latest True Color image for visual confirmation
+                                    map_url = img_data[-1].get('image', {}).get('truecolor')
+                            
                             ndvi_data = {
                                 "status": status,
                                 "value": round(ndvi_val, 2),
-                                "map_url": f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}"
+                                "map_url": map_url
                             }
                         else:
                             ndvi_data["status"] = "Waiting for Satellite Pass"
