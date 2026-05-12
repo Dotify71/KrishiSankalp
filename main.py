@@ -602,6 +602,13 @@ def get_public_stats():
         loc = q.location if q.location else "Unknown"
         locations[loc] = locations.get(loc, 0) + 1
         sea = q.season if q.season else "Unknown"
+        seasons[sea] = seasons.get(sea, 0) + 1
+    db.close()
+    return {
+        "total_queries": len(queries),
+        "locations": locations,
+        "seasons": seasons
+    }
 @app.get("/api/admin/users")
 def get_all_users(username: str = Depends(verify_admin)):
     db = SessionLocal()
@@ -831,30 +838,46 @@ def get_admin_page(username: str = Depends(verify_admin)):
         }
 
         async function loadUsers() {
-            const res = await fetch('/api/admin/users');
-            const users = await res.json();
-            document.getElementById('table-users').innerHTML = users.map(u => `
-                <tr><td><b>${u.name || 'Anonymous'}</b></td><td>${u.email}</td><td>${u.location || '-'}</td><td style="color:#718096">${new Date(u.last_login).toLocaleDateString()}</td></tr>
-            `).join('');
+            try {
+                const res = await fetch('/api/admin/users');
+                const users = await res.json();
+                const tbody = document.getElementById('table-users');
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#a0aec0; padding:40px;">No users registered yet.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = users.map(u => `
+                    <tr><td><b>${u.name || 'Anonymous'}</b></td><td>${u.email}</td><td>${u.location || '-'}</td><td style="color:#718096">${new Date(u.last_login).toLocaleDateString()}</td></tr>
+                `).join('');
+            } catch (e) { console.error("Users load failed", e); }
         }
 
         async function loadPosts() {
-            const res = await fetch('/api/community');
-            const posts = await res.json();
-            document.getElementById('table-community').innerHTML = posts.map(p => `
-                <tr>
-                    <td><b>${p.author}</b></td>
-                    <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.content}</td>
-                    <td>${p.tag}</td>
-                    <td><button class="action-btn delete" onclick="deletePost(${p.id})">Remove</button></td>
-                </tr>
-            `).join('');
+            try {
+                const res = await fetch('/api/community?limit=50');
+                const posts = await res.json();
+                const tbody = document.getElementById('table-community');
+                if (posts.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#a0aec0; padding:40px;">No community posts found.</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = posts.map(p => `
+                    <tr>
+                        <td><b>${p.author}</b></td>
+                        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.content}</td>
+                        <td>${p.tag}</td>
+                        <td><button class="action-btn delete" onclick="deletePost(${p.id})">Remove</button></td>
+                    </tr>
+                `).join('');
+            } catch (e) { console.error("Posts load failed", e); }
         }
 
         async function deletePost(id) {
             if (confirm("Permanently remove this success story?")) {
-                await fetch(`/api/admin/community/${id}`, { method: 'DELETE' });
-                loadPosts();
+                try {
+                    await fetch(`/api/admin/community/${id}`, { method: 'DELETE' });
+                    loadPosts();
+                } catch (e) { alert("Delete failed"); }
             }
         }
 
@@ -864,9 +887,9 @@ def get_admin_page(username: str = Depends(verify_admin)):
 </html>"""
 
 @app.get("/api/community")
-def get_community_posts():
+def get_community_posts(limit: int = 10):
     db = SessionLocal()
-    posts = db.query(CommunityPost).order_by(CommunityPost.timestamp.desc()).limit(10).all()
+    posts = db.query(CommunityPost).order_by(CommunityPost.timestamp.desc()).limit(limit).all()
     db.close()
     return posts
 
