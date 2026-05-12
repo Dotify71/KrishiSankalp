@@ -450,18 +450,19 @@ function displayResults(data) {
     // Display Market Data
     if (data.market && data.market.length > 0) {
         let marketHtml = `
-        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <thead>
-                <tr style="background-color: #f1f8e9; text-align: left; color: #1b5e20;">
-                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Commodity</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Live Price</th>
-                    <th style="padding: 15px; border-bottom: 2px solid #2e7d32; font-weight: bold;">Market Trend</th>
-                </tr>
-            </thead>
-            <tbody>`;
+        <div style="overflow-x: auto; margin-top: 15px; border-radius: 8px;">
+            <table style="width: 100%; min-width: 350px; border-collapse: collapse; background: white; border: 1px solid #e0e0e0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <thead>
+                    <tr style="background-color: #f1f8e9; text-align: left; color: #1b5e20;">
+                        <th style="padding: 10px 8px; border-bottom: 2px solid #2e7d32; font-weight: bold; font-size: 0.9em;">Commodity</th>
+                        <th style="padding: 10px 8px; border-bottom: 2px solid #2e7d32; font-weight: bold; font-size: 0.9em;">Live Price</th>
+                        <th style="padding: 10px 8px; border-bottom: 2px solid #2e7d32; font-weight: bold; font-size: 0.9em;">Market Trend</th>
+                    </tr>
+                </thead>
+                <tbody>`;
         
         data.market.forEach((item, idx) => {
-            let badgeColor = "#757575"; // Stable grey
+            let badgeColor = "#757575"; 
             let badgeBg = "#f5f5f5";
             let icon = "➖";
             if (item.trend && item.trend.includes("Rising")) {
@@ -477,16 +478,16 @@ function displayResults(data) {
             const rowStyle = idx % 2 === 0 ? "background-color: #ffffff;" : "background-color: #fafafa;";
             marketHtml += `
                 <tr style="${rowStyle} border-bottom: 1px solid #eeeeee;">
-                    <td style="padding: 15px; font-weight: bold; color: #333;">${item.crop}</td>
-                    <td style="padding: 15px; font-weight: bold; color: #2e7d32; font-size: 1.1em;">₹${item.price}<span style="font-size: 0.7em; color: #666; font-weight: normal;">/${t.resQuintal}</span></td>
-                    <td style="padding: 15px;">
-                        <span style="background-color: ${badgeBg}; color: ${badgeColor}; padding: 5px 10px; border-radius: 20px; font-size: 0.85em; font-weight: bold; display: inline-block;">
+                    <td style="padding: 10px 8px; font-weight: bold; color: #333; font-size: 0.9em;">${item.crop}</td>
+                    <td style="padding: 10px 8px; font-weight: bold; color: #2e7d32; font-size: 1em;">₹${item.price}<span style="font-size: 0.7em; color: #666; font-weight: normal;">/${t.resQuintal}</span></td>
+                    <td style="padding: 10px 8px;">
+                        <span style="background-color: ${badgeBg}; color: ${badgeColor}; padding: 4px 8px; border-radius: 20px; font-size: 0.75em; font-weight: bold; display: inline-block; white-space: nowrap;">
                             ${icon} ${item.trend || "Stable"}
                         </span>
                     </td>
                 </tr>`;
         });
-        marketHtml += `</tbody></table>
+        marketHtml += `</tbody></table></div>
         <p style="text-align: right; font-size: 0.8em; color: #999; margin-top: 10px;">*Source: Agmarknet (Govt. of India)</p>`;
         document.getElementById('marketInfo').innerHTML = marketHtml;
     } else {
