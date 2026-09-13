@@ -805,3 +805,143 @@ if (window.speechSynthesis) {
         console.log("Voices loaded:", window.speechSynthesis.getVoices().length);
     };
 }
+
+
+// --- MARKETPLACE LOGIC ---
+function switchAppView(view) {
+    if(view === 'advisory') {
+        document.getElementById('advisoryView').style.display = 'block';
+        document.getElementById('marketplaceView').style.display = 'none';
+        document.getElementById('btnAdvisory').style.background = '#107c41';
+        document.getElementById('btnAdvisory').style.border = 'none';
+        document.getElementById('btnMarketplace').style.background = 'transparent';
+        document.getElementById('btnMarketplace').style.border = '1px solid white';
+    } else {
+        document.getElementById('advisoryView').style.display = 'none';
+        document.getElementById('marketplaceView').style.display = 'block';
+        document.getElementById('btnMarketplace').style.background = '#107c41';
+        document.getElementById('btnMarketplace').style.border = 'none';
+        document.getElementById('btnAdvisory').style.background = 'transparent';
+        document.getElementById('btnAdvisory').style.border = '1px solid white';
+    }
+}
+
+function showMktTab(evt, tabName) {
+    let tabs = document.getElementById('marketplaceDashboard').getElementsByClassName("tab");
+    for (let i = 0; i < tabs.length; i++) tabs[i].classList.remove("active");
+    
+    let contents = document.getElementById('marketplaceDashboard').getElementsByClassName("tab-content");
+    for (let i = 0; i < contents.length; i++) contents[i].classList.remove("active");
+    
+    evt.currentTarget.classList.add("active");
+    document.getElementById(tabName).classList.add("active");
+}
+
+function planToSell(cropName) {
+    let cleanName = cropName.split(' (')[0];
+    switchAppView('marketplace');
+    document.getElementById('mktCropName').value = cleanName;
+    document.getElementById('mktQuantity').focus();
+    // smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('listingForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    let cropName = document.getElementById('mktCropName').value;
+    let qty = parseFloat(document.getElementById('mktQuantity').value);
+    let expectedPrice = parseFloat(document.getElementById('mktPrice').value);
+    
+    document.getElementById('marketplaceDashboard').style.display = 'block';
+    
+    runMarketplaceAI(cropName, qty, expectedPrice);
+});
+
+function runMarketplaceAI(cropName, qty, expectedPrice) {
+    // Simulated AI Demand Forecasting
+    let demandLevels = ["High", "Medium", "Low"];
+    let demand = demandLevels[Math.floor(Math.random() * 2)]; // Skew towards High/Medium for demo
+    
+    let demandColor = demand === "High" ? "#2e7d32" : demand === "Medium" ? "#ff9800" : "#d32f2f";
+    let demandHtml = `
+        <h4 style="margin:0 0 10px 0; color: ${demandColor}">Current Demand: ${demand}</h4>
+        <p style="margin:0; font-size:0.9em; color:#555;">Based on recent market trends and seasonal data, the demand for <strong>${cropName}</strong> is currently ${demand}. Buyers are actively looking for fresh supplies.</p>
+        <p style="margin:5px 0 0 0; font-size:0.9em; color:#555;"><strong>AI Suggestion:</strong> List ${demand === 'High' ? 'your full harvest' : 'in smaller batches'} to maximize profit.</p>
+    `;
+    document.getElementById('demandInfo').innerHTML = demandHtml;
+    
+    // Simulated Buyers
+    let buyers = [
+        { name: "FreshMart Retailers", type: "Retail Chain", price: expectedPrice + 2, distance: 15 },
+        { name: "AgroBulk Traders", type: "Wholesaler", price: expectedPrice - 1, distance: 5 },
+        { name: "Green Leaf Restaurants", type: "Restaurant", price: expectedPrice + 5, distance: 45 }
+    ];
+    
+    let transportRatePerKmPerKg = 0.05; // 5 paise per km per kg
+    
+    let buyersHtml = "";
+    let bestNetEarning = -999999;
+    let bestBuyer = null;
+    
+    buyers.forEach((b, idx) => {
+        let revenue = b.price * qty;
+        let transportCost = b.distance * transportRatePerKmPerKg * qty;
+        let netEarning = revenue - transportCost;
+        
+        if (netEarning > bestNetEarning) {
+            bestNetEarning = netEarning;
+            bestBuyer = { ...b, netEarning, transportCost };
+        }
+        
+        buyersHtml += `
+            <div style="border: 1px solid #eee; padding: 15px; border-radius: 8px; background: #fafafa;">
+                <div style="display:flex; justify-content: space-between; margin-bottom:10px;">
+                    <strong style="color:#002244;">${b.name} <span style="font-size:0.8em; color:#777; font-weight:normal;">(${b.type})</span></strong>
+                    <strong style="color:#2e7d32;">₹${b.price}/kg</strong>
+                </div>
+                <div style="font-size:0.9em; color:#555; margin-bottom:10px;">
+                    📍 ${b.distance} km away | 🚚 Est. Transport: ₹${transportCost.toFixed(0)}
+                </div>
+                <button onclick="acceptOrder('${b.name}', ${qty}, ${b.price}, ${transportCost})" style="background: #0055a4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size:0.85em;">Accept Offer</button>
+            </div>
+        `;
+    });
+    
+    document.getElementById('buyersList').innerHTML = buyersHtml;
+    
+    // Best Buyer AI Rec
+    let bestHtml = `
+        <h4 style="margin:0 0 10px 0; color: #2e7d32;">AI Recommendation: Sell to ${bestBuyer.name}</h4>
+        <p style="margin:0; font-size:0.9em; color:#333;">
+            Although prices vary, selling to <strong>${bestBuyer.name}</strong> yields the best estimated net return of <strong>₹${bestBuyer.netEarning.toFixed(0)}</strong> after accounting for ₹${bestBuyer.transportCost.toFixed(0)} in logistics costs.
+        </p>
+    `;
+    document.getElementById('bestBuyerInfo').innerHTML = bestHtml;
+}
+
+function acceptOrder(buyerName, qty, price, transportCost) {
+    let orderId = "ORD-" + Math.floor(Math.random() * 100000);
+    let total = (qty * price) - transportCost;
+    
+    let orderHtml = `
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fff;">
+            <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                <strong>${orderId} <span style="background:#fff3e0; color:#e65100; font-size:0.8em; padding:2px 6px; border-radius:10px; margin-left:10px;">Pending Pickup</span></strong>
+                <strong style="color:#2e7d32;">Net: ₹${total.toFixed(0)}</strong>
+            </div>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Buyer:</strong> ${buyerName}</p>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${qty} kg @ ₹${price}/kg</p>
+            <p style="margin:5px 0; font-size:0.9em; color:#666;">🚚 Logistics partner assigned. Estimated transport cost deducted: ₹${transportCost.toFixed(0)}</p>
+        </div>
+    `;
+    
+    let ordersList = document.getElementById('ordersList');
+    if (ordersList.innerHTML.includes("No active orders")) {
+        ordersList.innerHTML = orderHtml;
+    } else {
+        ordersList.innerHTML = orderHtml + ordersList.innerHTML;
+    }
+    
+    alert("Order accepted successfully! Logistics partner has been notified.");
+    showMktTab({currentTarget: document.querySelectorAll('#marketplaceDashboard .tab')[1]}, 'mktOrders');
+}
