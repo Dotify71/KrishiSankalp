@@ -74,21 +74,7 @@ KrishiSankalp/
 
 ---
 
-## 🔐 Environment Variables
-
-To run the application locally with all features (like plant ID and weather), you need to set up the following environment variables (create a `.env` file based on `.env.example`):
-
-- `WEATHER_API_KEY`
-- `KINDWISE_TOKEN`
-- `AGRO_API_KEY`
-- `GOVT_DATA_API_KEY`
-- `TREFLE_TOKEN`
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-
----
-
-## 🚀 Getting Started (Local Development)
+## Getting Started (Local Development)
 
 Follow these steps to run KrishiSankalp on your local machine:
 
