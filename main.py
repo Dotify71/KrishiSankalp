@@ -996,5 +996,45 @@ async def diagnose_crop(file: UploadFile = File(...)):
         logger.error(f"Diagnosis Critical Failure: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error during diagnosis.")
 
+
+# --- MARKETPLACE ENDPOINTS ---
+from pydantic import BaseModel
+from typing import List
+
+market_listings = []
+market_orders = []
+
+class MarketListing(BaseModel):
+    crop_name: str
+    quantity: float
+    expected_price: float
+
+class MarketOrder(BaseModel):
+    buyer_name: str
+    quantity: float
+    price: float
+    transport_cost: float
+    order_id: str
+    crop_name: str
+
+@app.post("/api/marketplace/list")
+def create_listing(listing: MarketListing):
+    market_listings.append(listing.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/listings")
+def get_listings():
+    return {"status": "success", "data": market_listings}
+
+@app.post("/api/marketplace/order")
+def create_order(order: MarketOrder):
+    market_orders.append(order.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/orders")
+def get_orders():
+    return {"status": "success", "data": market_orders}
+
 # --- 4. Serve Frontend ---
+
 app.mount("/", StaticFiles(directory="static", html=True), name="static")

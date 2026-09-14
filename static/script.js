@@ -390,7 +390,7 @@ function displayResults(data) {
     let cropsHtml = '';
     data.crops.forEach((crop, index) => {
         const priceDisplay = (crop.price === "Self Consumption") ? `${crop.price}` : `₹${crop.price}/${t.resQuintal}`;
-        cropsHtml += `<div class="crop-item"><div class="crop-name">${index + 1}. ${crop.name}</div><div class="crop-details">✓ ${t.resYield}: ${crop.yield}<br>✓ ${t.resInvestment}: ${crop.investment}<br>✓ ${t.resPrice}: ${priceDisplay}<br><div style="margin-top:10px; padding:8px; background:#f0f7f4; border-left:3px solid #107c41;"><strong>💡 Tip:</strong> ${crop.tip}</div></div></div>`;
+        cropsHtml += `<div class="crop-item"><div class="crop-name">${index + 1}. ${crop.name}</div><div class="crop-details">✓ ${t.resYield}: ${crop.yield}<br>✓ ${t.resInvestment}: ${crop.investment}<br>✓ ${t.resPrice}: ${priceDisplay}<br><div style="margin-top:10px; padding:8px; background:#f0f7f4; border-left:3px solid #107c41;"><strong>💡 Tip:</strong> ${crop.tip}</div><button onclick="planToSell(\'${crop.name}\')" style="margin-top:10px; background:#ff9800; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-weight:bold; font-size:0.85em;" data-i18n="btnSellHarvest">🛒 Sell Harvest</button></div></div>`;
     });
     document.getElementById('cropsList').innerHTML = cropsHtml;
     const weatherBadge = data.weather.desc.includes("Live") ? ' <span style="background:#2e7d32; color:white; padding:2px 6px; border-radius:4px; font-size:0.7em;">LIVE</span>' : '';
@@ -808,6 +808,7 @@ if (window.speechSynthesis) {
 
 
 // --- MARKETPLACE LOGIC ---
+
 function switchAppView(view) {
     if(view === 'advisory') {
         document.getElementById('advisoryView').style.display = 'block';
@@ -857,10 +858,70 @@ document.getElementById('listingForm').addEventListener('submit', function(e) {
     runMarketplaceAI(cropName, qty, expectedPrice);
 });
 
-function runMarketplaceAI(cropName, qty, expectedPrice) {
+async function loadMarketplaceData() {
+    try {
+        let res = await fetch('/api/marketplace/orders');
+        let data = await res.json();
+        if(data.data && data.data.length > 0) {
+            let ordersList = document.getElementById('ordersList');
+            ordersList.innerHTML = '';
+            data.data.forEach(o => {
+                let total = (o.quantity * o.price) - o.transport_cost;
+                ordersList.innerHTML += `
+                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fff;">
+                        <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                            <strong>${o.order_id} <span style="background:#fff3e0; color:#e65100; font-size:0.8em; padding:2px 6px; border-radius:10px; margin-left:10px;">Pending Pickup</span></strong>
+                            <strong style="color:#2e7d32;">Net: ₹${total.toFixed(0)}</strong>
+                        </div>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Buyer:</strong> ${o.buyer_name} (for ${o.crop_name})</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${o.quantity} kg @ ₹${o.price}/kg</p>
+                        <p style="margin:5px 0; font-size:0.9em; color:#666;">🚚 Logistics partner assigned. Estimated transport cost deducted: ₹${o.transport_cost.toFixed(0)}</p>
+                    </div>
+                `;
+            });
+        }
+    } catch(e) { console.log(e); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadMarketplaceData();
+});
+
+async function acceptOrder(buyerName, qty, price, transportCost, cropName) {
+    let orderId = "ORD-" + Math.floor(Math.random() * 100000);
+    let orderData = {
+        buyer_name: buyerName,
+        quantity: qty,
+        price: price,
+        transport_cost: transportCost,
+        order_id: orderId,
+        crop_name: cropName || "Crop"
+    };
+    
+    try {
+        await fetch('/api/marketplace/order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(orderData)
+        });
+        alert("Order accepted successfully! Logistics partner has been notified.");
+        loadMarketplaceData();
+        showMktTab({currentTarget: document.querySelectorAll('#marketplaceDashboard .tab')[1]}, 'mktOrders');
+    } catch(e) { alert("Error saving order"); }
+}
+
+async function runMarketplaceAI(cropName, qty, expectedPrice) {
+    try {
+        await fetch('/api/marketplace/list', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({crop_name: cropName, quantity: qty, expected_price: expectedPrice})
+        });
+    } catch(e) {}
+    
     // Simulated AI Demand Forecasting
     let demandLevels = ["High", "Medium", "Low"];
-    let demand = demandLevels[Math.floor(Math.random() * 2)]; // Skew towards High/Medium for demo
+    let demand = demandLevels[Math.floor(Math.random() * 2)];
     
     let demandColor = demand === "High" ? "#2e7d32" : demand === "Medium" ? "#ff9800" : "#d32f2f";
     let demandHtml = `
@@ -870,20 +931,18 @@ function runMarketplaceAI(cropName, qty, expectedPrice) {
     `;
     document.getElementById('demandInfo').innerHTML = demandHtml;
     
-    // Simulated Buyers
     let buyers = [
         { name: "FreshMart Retailers", type: "Retail Chain", price: expectedPrice + 2, distance: 15 },
         { name: "AgroBulk Traders", type: "Wholesaler", price: expectedPrice - 1, distance: 5 },
         { name: "Green Leaf Restaurants", type: "Restaurant", price: expectedPrice + 5, distance: 45 }
     ];
     
-    let transportRatePerKmPerKg = 0.05; // 5 paise per km per kg
-    
+    let transportRatePerKmPerKg = 0.05;
     let buyersHtml = "";
     let bestNetEarning = -999999;
     let bestBuyer = null;
     
-    buyers.forEach((b, idx) => {
+    buyers.forEach((b) => {
         let revenue = b.price * qty;
         let transportCost = b.distance * transportRatePerKmPerKg * qty;
         let netEarning = revenue - transportCost;
@@ -902,14 +961,13 @@ function runMarketplaceAI(cropName, qty, expectedPrice) {
                 <div style="font-size:0.9em; color:#555; margin-bottom:10px;">
                     📍 ${b.distance} km away | 🚚 Est. Transport: ₹${transportCost.toFixed(0)}
                 </div>
-                <button onclick="acceptOrder('${b.name}', ${qty}, ${b.price}, ${transportCost})" style="background: #0055a4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size:0.85em;">Accept Offer</button>
+                <button onclick="acceptOrder('${b.name}', ${qty}, ${b.price}, ${transportCost}, '${cropName}')" style="background: #0055a4; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size:0.85em;">Accept Offer</button>
             </div>
         `;
     });
     
     document.getElementById('buyersList').innerHTML = buyersHtml;
     
-    // Best Buyer AI Rec
     let bestHtml = `
         <h4 style="margin:0 0 10px 0; color: #2e7d32;">AI Recommendation: Sell to ${bestBuyer.name}</h4>
         <p style="margin:0; font-size:0.9em; color:#333;">
@@ -917,31 +975,4 @@ function runMarketplaceAI(cropName, qty, expectedPrice) {
         </p>
     `;
     document.getElementById('bestBuyerInfo').innerHTML = bestHtml;
-}
-
-function acceptOrder(buyerName, qty, price, transportCost) {
-    let orderId = "ORD-" + Math.floor(Math.random() * 100000);
-    let total = (qty * price) - transportCost;
-    
-    let orderHtml = `
-        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #fff;">
-            <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
-                <strong>${orderId} <span style="background:#fff3e0; color:#e65100; font-size:0.8em; padding:2px 6px; border-radius:10px; margin-left:10px;">Pending Pickup</span></strong>
-                <strong style="color:#2e7d32;">Net: ₹${total.toFixed(0)}</strong>
-            </div>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Buyer:</strong> ${buyerName}</p>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${qty} kg @ ₹${price}/kg</p>
-            <p style="margin:5px 0; font-size:0.9em; color:#666;">🚚 Logistics partner assigned. Estimated transport cost deducted: ₹${transportCost.toFixed(0)}</p>
-        </div>
-    `;
-    
-    let ordersList = document.getElementById('ordersList');
-    if (ordersList.innerHTML.includes("No active orders")) {
-        ordersList.innerHTML = orderHtml;
-    } else {
-        ordersList.innerHTML = orderHtml + ordersList.innerHTML;
-    }
-    
-    alert("Order accepted successfully! Logistics partner has been notified.");
-    showMktTab({currentTarget: document.querySelectorAll('#marketplaceDashboard .tab')[1]}, 'mktOrders');
 }
