@@ -165,7 +165,10 @@ async function syncUserToServer(overrides = {}) {
     try {
         const res = await fetch('/api/user/sync', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+            },
             body: JSON.stringify(syncPayload)
         });
         if (res.ok) {
