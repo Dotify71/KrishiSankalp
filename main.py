@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, Query, Form
+from translations import translate_dict, HTTPException, File, UploadFile
 import base64
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -173,7 +174,7 @@ class UserSync(BaseModel):
 
 # --- 3. API Endpoints ---
 @app.post("/recommend")
-def get_recommendation(data: FarmData):
+def get_recommendation(data: FarmData, lang: str = "en"):
     # A. Save the incoming search query to the database
     db = SessionLocal()
     db_query = FarmQuery(
@@ -519,7 +520,7 @@ def get_recommendation(data: FarmData):
                 logger.error(f"Satellite analysis failed: {str(e)}")
                 ndvi_data["status"] = "Connection Error"
 
-    return {
+    response_data = {
         "crops": regional_crops,
         "market": [{"crop": c["name"].split(" (")[0], "price": c["price"], "trend": c.get("trend", "Stable")} for c in regional_crops if c.get("price") and c.get("price") != "Personal Use"],
         "weather": {
@@ -534,6 +535,7 @@ def get_recommendation(data: FarmData):
         "schemes": schemes,
         "query_id": db_query.id
     }
+    return translate_dict(response_data, lang)
 
 @app.post("/api/user/sync")
 def sync_user(data: UserSync):
@@ -925,7 +927,7 @@ async def diagnose_crop(file: UploadFile = File(...)):
         contents = await file.read()
         # Memory check: If image is somehow still > 15MB, warn
         if len(contents) > 15 * 1024 * 1024:
-            return {"error": "Image file too large. Please upload a smaller photo."}
+            return translate_dict({"error": "Image file too large. Please upload a smaller photo."}, lang)
 
         encoded_image = base64.b64encode(contents).decode("utf-8")
         
@@ -954,7 +956,7 @@ async def diagnose_crop(file: UploadFile = File(...)):
                 if attempt == 1: raise e
                 time.sleep(2)
         else:
-            return {"error": "AI Engine is currently busy or unresponsive. Please try again in a moment."}
+            return translate_dict({"error": "AI Engine is currently busy or unresponsive. Please try again in a moment."}, lang)
             
         data = response.json()
         result = data.get("result", {})
@@ -962,16 +964,16 @@ async def diagnose_crop(file: UploadFile = File(...)):
         # Guard: Check if the image actually contains a plant
         is_plant_info = result.get("is_plant", {})
         if not is_plant_info.get("binary"):
-            return {
+            return translate_dict({
                 "error": "No plant detected. Please upload a clear photo of a crop leaf or stem.",
                 "details": f"Confidence: {round(is_plant_info.get('probability', 0) * 100, 1)}%"
-            }
+            }, lang)
 
         health_info = result.get("is_healthy", {})
         disease_info = result.get("disease", {})
         
         if not health_info:
-            return {"error": "AI could not process this image clearly. Please try a closer photo."}
+            return translate_dict({"error": "AI could not process this image clearly. Please try a closer photo."}, lang)
 
         diagnosis = "Healthy" if health_info.get("binary") else "Disease Detected"
         confidence = round(health_info.get("probability", 0) * 100, 1)
@@ -985,12 +987,12 @@ async def diagnose_crop(file: UploadFile = File(...)):
                     "treatment": sug.get("details", {}).get("treatment", {}).get("biological", ["Contact local KVK for treatment."])
                 })
         
-        return {
+        return translate_dict({
             "diagnosis": diagnosis,
             "confidence": confidence,
             "suggestions": suggestions,
             "is_healthy": health_info.get("binary")
-        }
+        }, lang)
         
     except Exception as e:
         logger.error(f"Diagnosis Critical Failure: {str(e)}")
