@@ -58,7 +58,15 @@
             </span>
         </div>
     </div>
-    <div class="container">
+
+    <!-- ADDED: Main App Navigation -->
+    <div class="app-nav" style="background: #002244; padding: 10px 20px; text-align: center; color: white;">
+        <button onclick="switchAppView('advisory')" id="btnAdvisory" style="background: #107c41; color: white; border: none; padding: 8px 16px; border-radius: 4px; margin: 0 5px; cursor: pointer; font-weight: bold;" data-i18n="navAdvisory" data-i18n="navAdvisory" data-i18n="navAdvisory">🌱 Farm Advisory</button>
+        <button onclick="switchAppView('marketplace')" id="btnMarketplace" style="background: transparent; color: white; border: 1px solid white; padding: 8px 16px; border-radius: 4px; margin: 0 5px; cursor: pointer; font-weight: bold;" data-i18n="navMarketplace" data-i18n="navMarketplace" data-i18n="navMarketplace">🛒 Marketplace</button>
+    </div>
+
+    <div class="container" id="advisoryView">
+
         <div class="header">
             <h1 id="titleText">AI KrishiSahyogi</h1>
             <p id="subtitleText">Smart Farming Crop Recommendation System</p>
@@ -232,6 +240,64 @@
             <div id="schemes" class="tab-content">
                 <h3 data-i18n="headSchemes">Eligible Government Subsidies</h3>
                 <div id="schemesInfo"></div>
+            </div>
+
+        </div>
+    </div> <!-- End advisoryView -->
+
+    <!-- ADDED: Marketplace View -->
+    <div class="container" id="marketplaceView" style="display: none;">
+        <div class="header">
+            <h1 data-i18n="mktTitle">🛒 KrishiSahyogi Marketplace</h1>
+            <p data-i18n="mktSubtitle">Connect directly with buyers, forecast demand, and maximize profits.</p>
+        </div>
+        
+        <div class="card">
+            <h2 data-i18n="mktListCrop">List Your Crop</h2>
+            <form id="listingForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label data-i18n="mktCropLabel">Crop / Product Name</label>
+                        <input type="text" id="mktCropName" required placeholder="e.g. Tomato">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="mktQtyLabel">Quantity Available (kg)</label>
+                        <input type="number" id="mktQuantity" required placeholder="e.g. 500">
+                    </div>
+                    <div class="form-group">
+                        <label data-i18n="mktPriceLabel">Expected Price (₹/kg)</label>
+                        <input type="number" id="mktPrice" required placeholder="e.g. 25">
+                    </div>
+                </div>
+                <button type="submit" class="btn" data-i18n="mktBtnList" data-i18n="mktBtnList" data-i18n="mktBtnList">List on Marketplace</button>
+            </form>
+        </div>
+
+        <div class="card" id="marketplaceDashboard" style="display: none;">
+            <div class="tabs">
+                <button class="tab active" onclick="showMktTab(event, 'mktDemand')" data-i18n="mktTabDemand" data-i18n="mktTabDemand" data-i18n="mktTabDemand">📈 Demand & Buyers</button>
+                <button class="tab" onclick="showMktTab(event, 'mktOrders')" data-i18n="mktTabOrders" data-i18n="mktTabOrders" data-i18n="mktTabOrders">📦 Orders & Logistics</button>
+            </div>
+
+            <div id="mktDemand" class="tab-content active">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h3 data-i18n="mktDemandForecasting">AI Demand Forecasting</h3>
+                    <span style="font-size: 0.7em; background: #eee; padding: 2px 5px; border-radius: 3px; color: #666;">SIMULATED AI</span>
+                </div>
+                <div id="demandInfo" style="margin-bottom: 20px; padding: 15px; border-radius: 8px; border: 1px solid #ddd;"></div>
+                
+                <h3 data-i18n="mktBestSelling">AI Best-Selling Recommendation</h3>
+                <div id="bestBuyerInfo" style="background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #2e7d32; margin-bottom: 20px;"></div>
+
+                <h3 data-i18n="mktAvailableBuyers">Available Buyers (Bulk/Retail)</h3>
+                <div id="buyersList" style="display: grid; gap: 15px;"></div>
+            </div>
+
+            <div id="mktOrders" class="tab-content">
+                <h3 data-i18n="mktTransactions">Transactions & Logistics</h3>
+                <div id="ordersList">
+                    <p style="color: #666;">No active orders yet.</p>
+                </div>
             </div>
         </div>
     </div>
