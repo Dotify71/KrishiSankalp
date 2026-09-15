@@ -11,6 +11,7 @@ import logging
 import os
 import random
 import requests
+import urllib.parse
 import secrets
 from dotenv import load_dotenv
 from fastapi import Depends, status
@@ -309,7 +310,7 @@ def get_recommendation(data: FarmData):
         # Only fetch/calculate price if it's a commercial crop
         if isinstance(crop["price"], (int, float)) or (isinstance(crop["price"], str) and crop["price"].replace(",", "").isdigit()):
             try:
-                url = f"{BASE_URL}?api-key={API_KEY}&format=json&limit=1&filters[state]={state_title}&filters[commodity]={commodity_search}"
+                url = f"{BASE_URL}?api-key={API_KEY}&format=json&limit=1&filters[state]={urllib.parse.quote_plus(state_title)}&filters[commodity]={urllib.parse.quote_plus(commodity_search)}"
                 response = requests.get(url, timeout=1.5) # Fast timeout for better UX
                 if response.status_code == 200:
                     data_json = response.json()
@@ -349,7 +350,7 @@ def get_recommendation(data: FarmData):
     # If GPS not provided, fallback to city search
     if not lat or not lon:
         try:
-            w_url = f"https://api.openweathermap.org/data/2.5/weather?q={data.location}&appid={WEATHER_API_KEY}&units=metric"
+            w_url = f"https://api.openweathermap.org/data/2.5/weather?q={urllib.parse.quote_plus(data.location)}&appid={WEATHER_API_KEY}&units=metric"
             w_res = requests.get(w_url, timeout=2)
             if w_res.status_code == 200:
                 w_data = w_res.json()
@@ -395,7 +396,7 @@ def get_recommendation(data: FarmData):
     for crop in regional_crops:
         try:
             # 6a. OpenFarm Data
-            of_url = f"https://openfarm.cc/api/v1/crops/?filter={crop['name'].split(' ')[0]}"
+            of_url = f"https://openfarm.cc/api/v1/crops/?filter={urllib.parse.quote_plus(crop['name'].split(' ')[0])}"
             of_res = requests.get(of_url, timeout=1.5)
             if of_res.status_code == 200:
                 of_data = of_res.json()
@@ -404,7 +405,7 @@ def get_recommendation(data: FarmData):
                     crop['tip'] += f" [Community Insight: {slug.replace('-', ' ').title()}]"
             
             # 6b. Trefle Botanical Data
-            t_url = f"https://trefle.io/api/v1/species/search?token={TREFLE_TOKEN}&q={crop['name'].split(' ')[0]}"
+            t_url = f"https://trefle.io/api/v1/species/search?token={TREFLE_TOKEN}&q={urllib.parse.quote_plus(crop['name'].split(' ')[0])}"
             t_res = requests.get(t_url, timeout=1.5)
             if t_res.status_code == 200:
                 t_data = t_res.json()
