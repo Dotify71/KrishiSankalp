@@ -1,4 +1,9 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import Request
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
 import base64
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -26,6 +31,11 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = FastAPI(title="KrishiSankalp API")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 
 # --- Keep-Alive Logic for Render Free Tier ---
 import threading
@@ -915,7 +925,8 @@ def add_community_post(post: PostCreate):
     return db_post
 
 @app.post("/api/diagnose")
-async def diagnose_crop(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def diagnose_crop(request: Request, file: UploadFile = File(...)):
     if not KINDWISE_TOKEN:
         logger.error("Kindwise API key (KINDWISE_TOKEN) is missing.")
         raise HTTPException(status_code=500, detail="AI Diagnosis configuration error: API key missing.")
