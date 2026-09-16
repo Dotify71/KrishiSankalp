@@ -1038,10 +1038,53 @@ from typing import List
 market_listings = []
 market_orders = []
 
+buyer_demands = [
+    {
+        "id": "DEMAND-001",
+        "buyer_name": "Green Leaf Restaurants",
+        "buyer_type": "Restaurant",
+        "crop_name": "Tomato",
+        "quantity": 500,
+        "max_price": 28,
+        "quality": "Grade A",
+        "location": "Bengaluru",
+        "required_by": "2026-09-20",
+        "status": "Open",
+        "notes": "Need fresh produce early morning."
+    }
+]
+farmer_offers = []
+
+
 class MarketListing(BaseModel):
     crop_name: str
     quantity: float
     expected_price: float
+
+
+class BuyerDemand(BaseModel):
+    id: str
+    buyer_name: str
+    buyer_type: str
+    crop_name: str
+    quantity: float
+    max_price: float
+    quality: str
+    location: str
+    required_by: str
+    status: str
+    notes: Optional[str] = ""
+
+class FarmerOffer(BaseModel):
+    id: str
+    demand_id: str
+    farmer_name: str
+    quantity: float
+    offered_price: float
+    quality: str
+    available_date: str
+    message: Optional[str] = ""
+    status: str = "Open"
 
 class MarketOrder(BaseModel):
     buyer_name: str
@@ -1068,6 +1111,61 @@ def create_order(order: MarketOrder):
 @app.get("/api/marketplace/orders")
 def get_orders():
     return {"status": "success", "data": market_orders}
+
+
+@app.post("/api/marketplace/demands")
+def create_demand(demand: BuyerDemand):
+    buyer_demands.append(demand.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/demands")
+def get_demands():
+    return {"status": "success", "data": buyer_demands}
+
+@app.post("/api/marketplace/offers")
+def create_offer(offer: FarmerOffer):
+    farmer_offers.append(offer.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/offers")
+def get_offers():
+    return {"status": "success", "data": farmer_offers}
+
+@app.post("/api/marketplace/match")
+def match_demands(listing: MarketListing):
+    matches = []
+    for d in buyer_demands:
+        if d['status'] != "Open": continue
+        
+        # Heuristics for match score
+        score = 0
+        if d['crop_name'].lower() == listing.crop_name.lower():
+            score += 40
+        elif d['crop_name'].lower() in listing.crop_name.lower() or listing.crop_name.lower() in d['crop_name'].lower():
+            score += 20
+            
+        if listing.price <= d['max_price']:
+            score += 30
+        elif listing.price <= d['max_price'] * 1.1:
+            score += 15
+            
+        if listing.quantity >= d['quantity']:
+            score += 20
+        elif listing.quantity >= d['quantity'] * 0.5:
+            score += 10
+            
+        # Basic location heuristic (exact match)
+        if listing.location.lower() == d['location'].lower():
+            score += 10
+            
+        if score > 40:
+            matches.append({
+                "demand": d,
+                "score": min(score, 99) # Cap at 99%
+            })
+            
+    matches.sort(key=lambda x: x['score'], reverse=True)
+    return {"status": "success", "data": matches}
 
 # --- 4. Serve Frontend ---
 

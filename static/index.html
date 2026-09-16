@@ -284,6 +284,11 @@
             <div class="tabs">
                 <button class="tab active" onclick="showMktTab(event, 'mktDemand')" data-i18n="mktTabDemand" data-i18n="mktTabDemand" data-i18n="mktTabDemand">📈 Demand & Buyers</button>
                 <button class="tab" onclick="showMktTab(event, 'mktOrders')" data-i18n="mktTabOrders" data-i18n="mktTabOrders" data-i18n="mktTabOrders">📦 Orders & Logistics</button>
+<button class="tab" onclick="showMktTab(event, 'mktSell')">🌾 Sell Your Crop</button>
+<button class="tab" onclick="showMktTab(event, 'mktMyListings')">📋 My Listings</button>
+<button class="tab" onclick="showMktTab(event, 'mktMyDemands')">🛒 My Demands</button>
+<button class="tab" onclick="showMktTab(event, 'mktBuyerDemands')">🏷️ Buyer Demands</button>
+<button class="tab" onclick="showMktTab(event, 'mktMyOffers')">🤝 My Offers</button>
             </div>
 
             <div id="mktDemand" class="tab-content active">
@@ -298,6 +303,80 @@
 
                 <h3 data-i18n="mktAvailableBuyers">Available Buyers (Bulk/Retail)</h3>
                 <div id="buyersList" style="display: grid; gap: 15px;"></div>
+            </div>
+
+            
+            
+            <div id="mktSell" class="tab-content">
+                <h3>List Crop for Sale (Farmer)</h3>
+                <form id="sellForm" onsubmit="event.preventDefault(); submitFarmerListing();" style="display: grid; gap: 10px;">
+                    <input type="text" id="sellCrop" placeholder="Crop / Product Name" required class="full-width">
+                    <input type="number" id="sellQty" placeholder="Quantity (kg)" required class="full-width">
+                    <input type="number" id="sellPrice" placeholder="Expected Price (₹/kg)" required class="full-width">
+                    <button type="submit" class="btn">List on Marketplace</button>
+                </form>
+                <div id="sellMatches" style="margin-top: 15px;"></div>
+            </div>
+
+            <div id="mktMyListings" class="tab-content">
+                <h3>My Crop Listings</h3>
+                <div id="myListingsList" style="display: grid; gap: 15px;"></div>
+            </div>
+
+            <div id="mktMyDemands" class="tab-content">
+                <h3>My Requirements</h3>
+                <div id="myDemandsList" style="display: grid; gap: 15px;"></div>
+            </div>
+
+            <div id="mktBuyerDemands" class="tab-content">
+                <h3>Create Buyer Requirement</h3>
+                <form id="demandForm" onsubmit="event.preventDefault(); submitBuyerDemand();" style="display: grid; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #ddd; padding-bottom: 20px;">
+                    <input type="text" id="demBuyerName" placeholder="Buyer / Business Name" required class="full-width">
+                    <select id="demBuyerType" class="full-width" required>
+                        <option value="">Select Buyer Type</option>
+                        <option value="Restaurant">Restaurant</option>
+                        <option value="Retailer">Retailer</option>
+                        <option value="Wholesaler">Wholesaler</option>
+                        <option value="Food Processing">Food Processing</option>
+                        <option value="Individual">Individual</option>
+                    </select>
+                    <input type="text" id="demProduct" placeholder="Product/Crop Required" required class="full-width">
+                    <input type="number" id="demQty" placeholder="Required Quantity (kg)" required class="full-width">
+                    <input type="number" id="demPrice" placeholder="Maximum Price (₹/kg)" required class="full-width">
+                    <input type="text" id="demQuality" placeholder="Quality / Grade" class="full-width">
+                    <input type="text" id="demLocation" placeholder="Delivery Location" class="full-width">
+                    <input type="date" id="demDate" required class="full-width">
+                    <input type="text" id="demNotes" placeholder="Additional Notes" class="full-width">
+                    <button type="submit" class="btn">Post Requirement</button>
+                </form>
+                <h3>Open Buyer Demands</h3>
+                <div id="buyerDemandsList" style="display: grid; gap: 15px;"></div>
+            </div>
+
+            <div id="mktMyOffers" class="tab-content">
+                <h3>My Offers & Connections</h3>
+                <div id="myOffersList" style="display: grid; gap: 15px;">
+                    <p style="color: #666;">No offers submitted yet.</p>
+                </div>
+            </div>
+            
+            <!-- Modal for Sending Offer -->
+            <div id="offerModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+                <div style="background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 400px; color: black;">
+                    <h3>Send Offer to Buyer</h3>
+                    <form id="offerForm" onsubmit="event.preventDefault(); submitOffer();" style="display: grid; gap: 10px;">
+                        <input type="hidden" id="offerDemandId">
+                        <input type="number" id="offQty" placeholder="Available Quantity (kg)" required class="full-width">
+                        <input type="number" id="offPrice" placeholder="Offered Price (₹/kg)" required class="full-width">
+                        <input type="text" id="offQuality" placeholder="Quality / Grade" required class="full-width">
+                        <input type="date" id="offDate" required class="full-width">
+                        <textarea id="offMessage" placeholder="Message to Buyer" class="full-width" rows="2"></textarea>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="submit" class="btn" style="flex: 1;">Send Offer</button>
+                            <button type="button" class="btn" style="flex: 1; background: #999;" onclick="document.getElementById('offerModal').style.display='none'">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <div id="mktOrders" class="tab-content">

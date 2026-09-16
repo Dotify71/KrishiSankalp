@@ -878,19 +878,165 @@ function planToSell(cropName) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-document.getElementById('listingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    let cropName = document.getElementById('mktCropName').value;
-    let qty = parseFloat(document.getElementById('mktQuantity').value);
-    let expectedPrice = parseFloat(document.getElementById('mktPrice').value);
+
+
+
+// --- BUYER DEMANDS & OFFERS LOGIC ---
+async function submitBuyerDemand() {
+    let payload = {
+        id: "DEMAND-" + Math.floor(Math.random() * 10000),
+        buyer_name: document.getElementById('demBuyerName').value,
+        buyer_type: document.getElementById('demBuyerType').value,
+        crop_name: document.getElementById('demProduct').value,
+        quantity: parseFloat(document.getElementById('demQty').value),
+        max_price: parseFloat(document.getElementById('demPrice').value),
+        quality: document.getElementById('demQuality').value,
+        location: document.getElementById('demLocation').value,
+        required_by: document.getElementById('demDate').value,
+        status: "Open",
+        notes: document.getElementById('demNotes').value
+    };
     
-    document.getElementById('marketplaceDashboard').style.display = 'block';
+    let res = await fetch('/api/marketplace/demands', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if(res.ok) {
+        alert("Buyer Demand Created!");
+        document.getElementById('demandForm').reset();
+        loadBuyerDemands();
+    }
+}
+
+async function loadBuyerDemands() {
+    try {
+        let res = await fetch('/api/marketplace/demands');
+        let data = await res.json();
+        if(data.data && data.data.length > 0) {
+            let list = document.getElementById('buyerDemandsList');
+            list.innerHTML = '';
+            data.data.forEach(d => {
+                list.innerHTML += `
+                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                            <strong style="color: #2e7d32; font-size: 1.1em;">${d.crop_name}</strong>
+                            <span style="background:#e8f5e9; color:#2e7d32; font-size:0.8em; padding:2px 8px; border-radius:12px;">${d.status}</span>
+                        </div>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Buyer:</strong> ${d.buyer_name} (${d.buyer_type})</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity Required:</strong> ${d.quantity} kg</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Max Price:</strong> ₹${d.max_price}/kg</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Quality:</strong> ${d.quality}</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Location:</strong> ${d.location}</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Required By:</strong> ${d.required_by}</p>
+                        <p style="margin:5px 0; font-size:0.9em; color:#666;"><em>${d.notes}</em></p>
+                        <div style="margin-top: 15px; display: flex; gap: 10px;">
+                            <button class="btn" style="flex:1;" onclick="openOfferModal('${d.id}')">Send Offer</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+    } catch(e) {}
+}
+
+function openOfferModal(demandId) {
+    document.getElementById('offerDemandId').value = demandId;
+    document.getElementById('offerModal').style.display = 'flex';
+}
+
+async function submitOffer() {
+    let payload = {
+        id: "OFFER-" + Math.floor(Math.random() * 10000),
+        demand_id: document.getElementById('offerDemandId').value,
+        farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer",
+        quantity: parseFloat(document.getElementById('offQty').value),
+        offered_price: parseFloat(document.getElementById('offPrice').value),
+        quality: document.getElementById('offQuality').value,
+        available_date: document.getElementById('offDate').value,
+        message: document.getElementById('offMessage').value
+    };
     
-    runMarketplaceAI(cropName, qty, expectedPrice);
-});
+    let res = await fetch('/api/marketplace/offers', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+    if(res.ok) {
+        alert("Offer sent successfully!");
+        document.getElementById('offerForm').reset();
+        document.getElementById('offerModal').style.display = 'none';
+        loadMyOffers();
+    }
+}
+
+async function loadMyOffers() {
+    try {
+        let res = await fetch('/api/marketplace/offers');
+        let data = await res.json();
+        if(data.data && data.data.length > 0) {
+            let list = document.getElementById('myOffersList');
+            list.innerHTML = '';
+            data.data.forEach(o => {
+                list.innerHTML += `
+                    <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff;">
+                        <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                            <strong>Offer ID: ${o.id}</strong>
+                            <span style="background:#e3f2fd; color:#1565c0; font-size:0.8em; padding:2px 8px; border-radius:12px;">${o.status}</span>
+                        </div>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Demand ID:</strong> ${o.demand_id}</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Offered Quantity:</strong> ${o.quantity} kg @ ₹${o.offered_price}/kg</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Quality:</strong> ${o.quality}</p>
+                        <p style="margin:5px 0; font-size:0.9em;"><strong>Available:</strong> ${o.available_date}</p>
+                    </div>
+                `;
+            });
+        }
+    } catch(e) {}
+}
+
+async function findMatchesForFarmer(cropName, qty, expectedPrice) {
+    let payload = {
+        farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer",
+        crop_name: cropName,
+        quantity: parseFloat(qty),
+        price: parseFloat(expectedPrice),
+        location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown"
+    };
+    
+    try {
+        let res = await fetch('/api/marketplace/match', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        let data = await res.json();
+        if(data.data && data.data.length > 0) {
+            let html = `<h4 style="margin-top:20px; color:#1565c0;">🎯 AI Buyer Matches Found!</h4>`;
+            data.data.forEach(match => {
+                let d = match.demand;
+                html += `
+                    <div style="border: 2px solid #1565c0; padding: 15px; border-radius: 8px; background: #f8fbff; margin-bottom: 10px;">
+                        <div style="display:flex; justify-content: space-between; align-items:center;">
+                            <strong>${d.buyer_name}</strong>
+                            <span style="background:#4caf50; color:white; padding:4px 8px; border-radius:12px; font-weight:bold; font-size:0.85em;">${match.score}% Match</span>
+                        </div>
+                        <p style="margin:8px 0; font-size:0.9em;">Wants ${d.quantity} kg ${d.crop_name} @ ₹${d.max_price}/kg</p>
+                        <p style="margin:5px 0; font-size:0.85em; color:#666;">📍 ${d.location} | 📅 By ${d.required_by}</p>
+                        <button class="btn" style="width:100%; margin-top:10px;" onclick="openOfferModal('${d.id}')">Send Offer</button>
+                    </div>
+                `;
+            });
+            // We append this to the "buyersList" div where the old simulated buyers used to be, or demandInfo
+            document.getElementById('buyersList').innerHTML = html + document.getElementById('buyersList').innerHTML;
+        }
+    } catch(e) {}
+}
 
 async function loadMarketplaceData() {
     try {
+        loadBuyerDemands();
+        loadMyOffers();
         let res = await fetch('/api/marketplace/orders');
         let data = await res.json();
         if(data.data && data.data.length > 0) {
@@ -942,6 +1088,7 @@ async function acceptOrder(buyerName, qty, price, transportCost, cropName) {
 }
 
 async function runMarketplaceAI(cropName, qty, expectedPrice) {
+    findMatchesForFarmer(cropName, qty, expectedPrice);
     try {
         await fetch('/api/marketplace/list', {
             method: 'POST',
@@ -1006,4 +1153,42 @@ async function runMarketplaceAI(cropName, qty, expectedPrice) {
         </p>
     `;
     document.getElementById('bestBuyerInfo').innerHTML = bestHtml;
+}
+
+function submitFarmerListing() {
+    let cropName = document.getElementById('sellCrop').value;
+    let qty = parseFloat(document.getElementById('sellQty').value);
+    let expectedPrice = parseFloat(document.getElementById('sellPrice').value);
+    
+    // Clear previous matches
+    document.getElementById('buyersList').innerHTML = "";
+    
+    // Create Farmer Listing object and trigger matching
+    let listing = {
+        crop_name: cropName,
+        quantity: qty,
+        price: expectedPrice,
+        location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown",
+        farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer"
+    };
+    
+    // Also save listing logic
+    let html = `
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; margin-bottom: 15px;">
+            <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                <strong style="color: #2e7d32;">${listing.crop_name}</strong>
+                <span style="background:#e8f5e9; color:#2e7d32; font-size:0.8em; padding:2px 8px; border-radius:12px;">Active</span>
+            </div>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${listing.quantity} kg</p>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Expected Price:</strong> ₹${listing.price}/kg</p>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Location:</strong> ${listing.location}</p>
+        </div>
+    `;
+    document.getElementById('myListingsList').innerHTML = html + document.getElementById('myListingsList').innerHTML;
+    
+    alert("Crop listed successfully!");
+    document.getElementById('sellForm').reset();
+    
+    // Trigger AI match search
+    findMatchesForFarmer(cropName, qty, expectedPrice);
 }
