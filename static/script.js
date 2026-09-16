@@ -1000,7 +1000,7 @@ async function findMatchesForFarmer(cropName, qty, expectedPrice) {
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer",
         crop_name: cropName,
         quantity: parseFloat(qty),
-        expected_price: parseFloat(expectedPrice), price: parseFloat(expectedPrice),
+        expected_price: parseFloat(expectedPrice),
         location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown"
     };
     
@@ -1090,7 +1090,7 @@ async function acceptOrder(buyerName, qty, price, transportCost, cropName) {
 async function runMarketplaceAI(cropName, qty, expectedPrice) {
     findMatchesForFarmer(cropName, qty, expectedPrice);
     try {
-        await await fetch('/api/marketplace/list', {
+        await fetch('/api/marketplace/list', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({crop_name: cropName, quantity: qty, expected_price: expectedPrice})
@@ -1167,7 +1167,7 @@ async function submitFarmerListing() {
     let listing = {
         crop_name: cropName,
         quantity: qty,
-        expected_price: expectedPrice, price: expectedPrice,
+        expected_price: expectedPrice,
         location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown",
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer"
     };
@@ -1187,7 +1187,7 @@ async function submitFarmerListing() {
                 <span style="background:#e8f5e9; color:#2e7d32; font-size:0.8em; padding:2px 8px; border-radius:12px;">Active</span>
             </div>
             <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${listing.quantity} kg</p>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Expected Price:</strong> ₹${listing.price}/kg</p>
+            <p style="margin:5px 0; font-size:0.9em;"><strong>Expected Price:</strong> ₹${listing.expected_price}/kg</p>
             <p style="margin:5px 0; font-size:0.9em;"><strong>Location:</strong> ${listing.location}</p>
         </div>
     `;
