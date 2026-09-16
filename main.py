@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Query, Form
-from translations import translate_dict, HTTPException, File, UploadFile
+from fastapi import FastAPI, Query, Form, HTTPException, File, UploadFile
+from translations import translate_dict
 import base64
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -917,7 +917,7 @@ def add_community_post(post: PostCreate):
     return db_post
 
 @app.post("/api/diagnose")
-async def diagnose_crop(file: UploadFile = File(...)):
+async def diagnose_crop(file: UploadFile = File(...), lang: str = Form("en")):
     if not KINDWISE_TOKEN:
         logger.error("Kindwise API key (KINDWISE_TOKEN) is missing.")
         raise HTTPException(status_code=500, detail="AI Diagnosis configuration error: API key missing.")
