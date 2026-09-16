@@ -281,8 +281,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const locRes = await fetch('/locations.json');
             const locData = await locRes.json();
             window._rawLocationData = locData;
-            renderLocationDropdown(savedLang);
             tomInstances['location'] = new TomSelect("#location", { create: true, sortField: { field: "text", direction: "asc" }, plugins: ['clear_button'] });
+            renderLocationDropdown(savedLang);
             tomInstances['soil']   = new TomSelect("#soil",   { create: false, plugins: ['clear_button'] });
             tomInstances['season'] = new TomSelect("#season", { create: false, plugins: ['clear_button'] });
             tomInstances['water']  = new TomSelect("#water",  { create: false, plugins: ['clear_button'] });
@@ -1000,7 +1000,7 @@ async function findMatchesForFarmer(cropName, qty, expectedPrice) {
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer",
         crop_name: cropName,
         quantity: parseFloat(qty),
-        price: parseFloat(expectedPrice),
+        expected_price: parseFloat(expectedPrice), price: parseFloat(expectedPrice),
         location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown"
     };
     
@@ -1090,7 +1090,7 @@ async function acceptOrder(buyerName, qty, price, transportCost, cropName) {
 async function runMarketplaceAI(cropName, qty, expectedPrice) {
     findMatchesForFarmer(cropName, qty, expectedPrice);
     try {
-        await fetch('/api/marketplace/list', {
+        await await fetch('/api/marketplace/list', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({crop_name: cropName, quantity: qty, expected_price: expectedPrice})
@@ -1155,7 +1155,7 @@ async function runMarketplaceAI(cropName, qty, expectedPrice) {
     document.getElementById('bestBuyerInfo').innerHTML = bestHtml;
 }
 
-function submitFarmerListing() {
+async function submitFarmerListing() {
     let cropName = document.getElementById('sellCrop').value;
     let qty = parseFloat(document.getElementById('sellQty').value);
     let expectedPrice = parseFloat(document.getElementById('sellPrice').value);
@@ -1167,10 +1167,17 @@ function submitFarmerListing() {
     let listing = {
         crop_name: cropName,
         quantity: qty,
-        price: expectedPrice,
+        expected_price: expectedPrice, price: expectedPrice,
         location: (JSON.parse(localStorage.getItem('krishiFarmData')) || {}).location || "Unknown",
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer"
     };
+    
+    // Save listing to backend
+    await fetch('/api/marketplace/list', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(listing)
+    });
     
     // Also save listing logic
     let html = `
@@ -1192,3 +1199,109 @@ function submitFarmerListing() {
     // Trigger AI match search
     findMatchesForFarmer(cropName, qty, expectedPrice);
 }
+// --- SPEECH-TO-TEXT VOICE SEARCH (Web Speech API) ---
+let activeSpeechRecognition = null;
+
+function initVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.log("Web Speech API not supported in this browser.");
+        document.querySelectorAll('.voice-btn').forEach(btn => btn.style.display = 'none');
+    }
+}
+
+window.startVoiceSearch = function(targetInputId, micBtnEl) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Voice recognition is not supported in your browser. Please try Chrome, Edge, or Safari.");
+        return;
+    }
+
+    if (activeSpeechRecognition) {
+        try { activeSpeechRecognition.stop(); } catch(e) {}
+        activeSpeechRecognition = null;
+        if (micBtnEl) micBtnEl.classList.remove('listening');
+        return;
+    }
+
+    try {
+        const recognition = new SpeechRecognition();
+        activeSpeechRecognition = recognition;
+
+        const langToggle = document.getElementById('langToggle');
+        const currentLang = langToggle ? langToggle.value : 'en';
+        const langMap = {
+            'en': 'en-IN',
+            'hi': 'hi-IN',
+            'pa': 'pa-IN',
+            'mr': 'mr-IN'
+        };
+        recognition.lang = langMap[currentLang] || 'en-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        if (micBtnEl) {
+            micBtnEl.classList.add('listening');
+            micBtnEl.title = "Listening... Speak now";
+        }
+
+        recognition.onresult = (event) => {
+            if (!event.results || !event.results[0] || !event.results[0][0]) return;
+            const transcript = event.results[0][0].transcript.trim();
+            if (!transcript) return;
+
+            const inputEl = document.getElementById(targetInputId);
+            if (!inputEl) return;
+
+            if (typeof tomInstances !== 'undefined' && tomInstances[targetInputId]) {
+                const ts = tomInstances[targetInputId];
+                let matchedValue = null;
+                Object.keys(ts.options).forEach(optKey => {
+                    const optText = ts.options[optKey].text.toLowerCase();
+                    if (optText.includes(transcript.toLowerCase()) || transcript.toLowerCase().includes(optText)) {
+                        matchedValue = optKey;
+                    }
+                });
+                if (matchedValue) {
+                    ts.setValue(matchedValue);
+                } else {
+                    ts.setTextboxValue(transcript);
+                    ts.refreshOptions();
+                }
+            } else {
+                inputEl.value = transcript;
+                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.warn("Speech recognition error:", event.error);
+            if (micBtnEl) {
+                micBtnEl.classList.remove('listening');
+                micBtnEl.title = "Click to speak";
+            }
+            activeSpeechRecognition = null;
+            if (event.error === 'not-allowed') {
+                alert("Microphone permission denied. Please allow microphone access in browser settings.");
+            }
+        };
+
+        recognition.onend = () => {
+            if (micBtnEl) {
+                micBtnEl.classList.remove('listening');
+                micBtnEl.title = "Click to speak";
+            }
+            activeSpeechRecognition = null;
+        };
+
+        recognition.start();
+    } catch (e) {
+        console.error("Speech recognition start failed:", e);
+        if (micBtnEl) micBtnEl.classList.remove('listening');
+        activeSpeechRecognition = null;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initVoiceInput();
+});
