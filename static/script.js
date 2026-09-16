@@ -1007,3 +1007,110 @@ async function runMarketplaceAI(cropName, qty, expectedPrice) {
     `;
     document.getElementById('bestBuyerInfo').innerHTML = bestHtml;
 }
+
+// --- SPEECH-TO-TEXT VOICE SEARCH (Web Speech API) ---
+let activeSpeechRecognition = null;
+
+function initVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        console.log("Web Speech API not supported in this browser.");
+        document.querySelectorAll('.voice-btn').forEach(btn => btn.style.display = 'none');
+    }
+}
+
+window.startVoiceSearch = function(targetInputId, micBtnEl) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Voice recognition is not supported in your browser. Please try Chrome, Edge, or Safari.");
+        return;
+    }
+
+    if (activeSpeechRecognition) {
+        try { activeSpeechRecognition.stop(); } catch(e) {}
+        activeSpeechRecognition = null;
+        if (micBtnEl) micBtnEl.classList.remove('listening');
+        return;
+    }
+
+    try {
+        const recognition = new SpeechRecognition();
+        activeSpeechRecognition = recognition;
+
+        const langToggle = document.getElementById('langToggle');
+        const currentLang = langToggle ? langToggle.value : 'en';
+        const langMap = {
+            'en': 'en-IN',
+            'hi': 'hi-IN',
+            'pa': 'pa-IN',
+            'mr': 'mr-IN'
+        };
+        recognition.lang = langMap[currentLang] || 'en-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        if (micBtnEl) {
+            micBtnEl.classList.add('listening');
+            micBtnEl.title = "Listening... Speak now";
+        }
+
+        recognition.onresult = (event) => {
+            if (!event.results || !event.results[0] || !event.results[0][0]) return;
+            const transcript = event.results[0][0].transcript.trim();
+            if (!transcript) return;
+
+            const inputEl = document.getElementById(targetInputId);
+            if (!inputEl) return;
+
+            if (typeof tomInstances !== 'undefined' && tomInstances[targetInputId]) {
+                const ts = tomInstances[targetInputId];
+                let matchedValue = null;
+                Object.keys(ts.options).forEach(optKey => {
+                    const optText = ts.options[optKey].text.toLowerCase();
+                    if (optText.includes(transcript.toLowerCase()) || transcript.toLowerCase().includes(optText)) {
+                        matchedValue = optKey;
+                    }
+                });
+                if (matchedValue) {
+                    ts.setValue(matchedValue);
+                } else {
+                    ts.setTextboxValue(transcript);
+                    ts.refreshOptions();
+                }
+            } else {
+                inputEl.value = transcript;
+                inputEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.warn("Speech recognition error:", event.error);
+            if (micBtnEl) {
+                micBtnEl.classList.remove('listening');
+                micBtnEl.title = "Click to speak";
+            }
+            activeSpeechRecognition = null;
+            if (event.error === 'not-allowed') {
+                alert("Microphone permission denied. Please allow microphone access in browser settings.");
+            }
+        };
+
+        recognition.onend = () => {
+            if (micBtnEl) {
+                micBtnEl.classList.remove('listening');
+                micBtnEl.title = "Click to speak";
+            }
+            activeSpeechRecognition = null;
+        };
+
+        recognition.start();
+    } catch (e) {
+        console.error("Speech recognition start failed:", e);
+        if (micBtnEl) micBtnEl.classList.remove('listening');
+        activeSpeechRecognition = null;
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initVoiceInput();
+});
