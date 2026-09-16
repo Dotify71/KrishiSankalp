@@ -3,7 +3,7 @@ from translations import translate_dict
 import base64
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 from typing import Optional
@@ -146,6 +146,7 @@ class CommunityPost(Base):
     location = Column(String)
     content = Column(String)
     tag = Column(String) # e.g., "Saved Crop", "Higher Yield"
+    image_data = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -900,6 +901,7 @@ class PostCreate(BaseModel):
     location: str
     content: str
     tag: str
+    image: Optional[str] = None
 
 @app.post("/api/community")
 def add_community_post(post: PostCreate):
@@ -908,7 +910,8 @@ def add_community_post(post: PostCreate):
         author=post.author,
         location=post.location,
         content=post.content,
-        tag=post.tag
+        tag=post.tag,
+        image_data=post.image
     )
     db.add(db_post)
     db.commit()
