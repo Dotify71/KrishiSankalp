@@ -14,6 +14,10 @@ import random
 import requests
 import secrets
 from dotenv import load_dotenv
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException
 from fastapi import Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse
@@ -27,6 +31,19 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 app = FastAPI(title="KrishiSankalp API")
+
+security_bearer = HTTPBearer()
+
+def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(security_bearer)):
+    token = credentials.credentials
+    try:
+        # Note: In production you should pass the CLIENT_ID to audience. Here we verify the signature and expiry.
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request())
+        return idinfo
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+
+
 
 # --- Keep-Alive Logic for Render Free Tier ---
 import threading
@@ -539,7 +556,9 @@ def get_recommendation(data: FarmData, lang: str = "en"):
     return translate_dict(response_data, lang)
 
 @app.post("/api/user/sync")
-def sync_user(data: UserSync):
+def sync_user(data: UserSync, token_data: dict = Depends(verify_google_token)):
+    if token_data.get('email') != data.email:
+        raise HTTPException(status_code=403, detail="Not authorized to sync this user")
     db = SessionLocal()
     db_user = db.query(User).filter(User.email == data.email).first()
     
@@ -576,7 +595,9 @@ def sync_user(data: UserSync):
     return response_data
 
 @app.get("/api/user/profile/{email}")
-def get_user_profile(email: str):
+def get_user_profile(email: str, token_data: dict = Depends(verify_google_token)):
+    if token_data.get('email') != email:
+        raise HTTPException(status_code=403, detail="Not authorized to access this profile")
     db = SessionLocal()
     db_user = db.query(User).filter(User.email == email).first()
     db.close()

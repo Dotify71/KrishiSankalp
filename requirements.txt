@@ -5,3 +5,4 @@ sqlalchemy
 python-dotenv
 requests
 python-multipart
+google-auth==2.22.0
