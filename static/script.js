@@ -281,8 +281,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const locRes = await fetch('/locations.json');
             const locData = await locRes.json();
             window._rawLocationData = locData;
-            renderLocationDropdown(savedLang);
             tomInstances['location'] = new TomSelect("#location", { create: true, sortField: { field: "text", direction: "asc" }, plugins: ['clear_button'] });
+            renderLocationDropdown(savedLang);
             tomInstances['soil']   = new TomSelect("#soil",   { create: false, plugins: ['clear_button'] });
             tomInstances['season'] = new TomSelect("#season", { create: false, plugins: ['clear_button'] });
             tomInstances['water']  = new TomSelect("#water",  { create: false, plugins: ['clear_button'] });
