@@ -124,7 +124,7 @@ def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://krishisankalp.onrender.com", "http://localhost:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
