@@ -165,7 +165,10 @@ async function syncUserToServer(overrides = {}) {
     try {
         const res = await fetch('/api/user/sync', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${user.token}`
+            },
             body: JSON.stringify(syncPayload)
         });
         if (res.ok) {
@@ -575,7 +578,10 @@ async function loadCommunity() {
             <div class="crop-item" style="border-left-color: #0055a4;">
                 <div style="font-weight: bold; color: #0055a4;">${p.author} • ${p.location}</div>
                 <p style="margin: 5px 0; font-size: 0.9em;">"${p.content}"</p>
-                <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ ${p.tag}</span>
+                ${p.image_data ? `<img src="${p.image_data}" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: block;">` : ''}
+                <div style="margin-top: 8px;">
+                    <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ ${p.tag}</span>
+                </div>
             </div>
         `).join('');
     } catch (e) {
@@ -583,25 +589,49 @@ async function loadCommunity() {
     }
 }
 
-window.showShareForm = async function() {
-    const content = prompt("Share your success story (e.g., 'The AI saved my cotton crop!'):");
-    if (!content) return;
+window.submitShareForm = async function() {
+    const content = document.getElementById('shareContent').value;
+    if (!content) { alert('Please enter your story.'); return; }
+    const tag = document.getElementById('shareTag').value || "Success";
+    const imageInput = document.getElementById('shareImage');
     
-    const tag = prompt("Add a tag (e.g., 'Saved Crop', 'Higher Profit'):") || "Success";
-    
+    let base64Image = null;
+    if (imageInput.files && imageInput.files[0]) {
+        base64Image = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve(e.target.result);
+            reader.readAsDataURL(imageInput.files[0]);
+        });
+    }
+
     try {
+        const btn = event.target;
+        btn.disabled = true;
+        btn.innerText = "Posting...";
         await fetch('/api/community', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({
-                author: user.name,
-                location: document.getElementById('location').value.split(',')[0],
+                author: user ? user.name : "Anonymous Farmer",
+                location: document.getElementById('location').value.split(',')[0] || "Unknown Location",
                 content: content,
-                tag: tag
+                tag: tag,
+                image: base64Image
             })
         });
+        document.getElementById('shareContent').value = '';
+        document.getElementById('shareTag').value = '';
+        imageInput.value = '';
+        document.getElementById('shareFormContainer').style.display = 'none';
+        document.getElementById('showShareBtn').style.display = 'block';
+        btn.disabled = false;
+        btn.innerText = "Post to Community";
         loadCommunity();
-    } catch (e) { alert("Failed to post."); }
+    } catch (e) { 
+        alert("Failed to post."); 
+        event.target.disabled = false;
+        event.target.innerText = "Post to Community";
+    }
 }
 
 function showTab(event, tabName) {

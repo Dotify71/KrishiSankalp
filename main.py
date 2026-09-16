@@ -6,7 +6,7 @@ from translations import translate_dict
 import base64
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 from typing import Optional
@@ -15,8 +15,13 @@ import logging
 import os
 import random
 import requests
+import urllib.parse
 import secrets
 from dotenv import load_dotenv
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException
 from fastapi import Depends, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import HTMLResponse
@@ -34,6 +39,17 @@ app = FastAPI(title="KrishiSankalp API")
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+security_bearer = HTTPBearer()
+
+def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(security_bearer)):
+    token = credentials.credentials
+    try:
+        # Note: In production you should pass the CLIENT_ID to audience. Here we verify the signature and expiry.
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request())
+        return idinfo
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")
 
 
 # --- Keep-Alive Logic for Render Free Tier ---
@@ -154,6 +170,7 @@ class CommunityPost(Base):
     location = Column(String)
     content = Column(String)
     tag = Column(String) # e.g., "Saved Crop", "Higher Yield"
+    image_data = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
 Base.metadata.create_all(bind=engine)
@@ -318,7 +335,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
         # Only fetch/calculate price if it's a commercial crop
         if isinstance(crop["price"], (int, float)) or (isinstance(crop["price"], str) and crop["price"].replace(",", "").isdigit()):
             try:
-                url = f"{BASE_URL}?api-key={API_KEY}&format=json&limit=1&filters[state]={state_title}&filters[commodity]={commodity_search}"
+                url = f"{BASE_URL}?api-key={API_KEY}&format=json&limit=1&filters[state]={urllib.parse.quote_plus(state_title)}&filters[commodity]={urllib.parse.quote_plus(commodity_search)}"
                 response = requests.get(url, timeout=1.5) # Fast timeout for better UX
                 if response.status_code == 200:
                     data_json = response.json()
@@ -358,7 +375,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
     # If GPS not provided, fallback to city search
     if not lat or not lon:
         try:
-            w_url = f"https://api.openweathermap.org/data/2.5/weather?q={data.location}&appid={WEATHER_API_KEY}&units=metric"
+            w_url = f"https://api.openweathermap.org/data/2.5/weather?q={urllib.parse.quote_plus(data.location)}&appid={WEATHER_API_KEY}&units=metric"
             w_res = requests.get(w_url, timeout=2)
             if w_res.status_code == 200:
                 w_data = w_res.json()
@@ -404,7 +421,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
     for crop in regional_crops:
         try:
             # 6a. OpenFarm Data
-            of_url = f"https://openfarm.cc/api/v1/crops/?filter={crop['name'].split(' ')[0]}"
+            of_url = f"https://openfarm.cc/api/v1/crops/?filter={urllib.parse.quote_plus(crop['name'].split(' ')[0])}"
             of_res = requests.get(of_url, timeout=1.5)
             if of_res.status_code == 200:
                 of_data = of_res.json()
@@ -413,7 +430,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                     crop['tip'] += f" [Community Insight: {slug.replace('-', ' ').title()}]"
             
             # 6b. Trefle Botanical Data
-            t_url = f"https://trefle.io/api/v1/species/search?token={TREFLE_TOKEN}&q={crop['name'].split(' ')[0]}"
+            t_url = f"https://trefle.io/api/v1/species/search?token={TREFLE_TOKEN}&q={urllib.parse.quote_plus(crop['name'].split(' ')[0])}"
             t_res = requests.get(t_url, timeout=1.5)
             if t_res.status_code == 200:
                 t_data = t_res.json()
@@ -546,7 +563,9 @@ def get_recommendation(data: FarmData, lang: str = "en"):
     return translate_dict(response_data, lang)
 
 @app.post("/api/user/sync")
-def sync_user(data: UserSync):
+def sync_user(data: UserSync, token_data: dict = Depends(verify_google_token)):
+    if token_data.get('email') != data.email:
+        raise HTTPException(status_code=403, detail="Not authorized to sync this user")
     db = SessionLocal()
     db_user = db.query(User).filter(User.email == data.email).first()
     
@@ -583,7 +602,9 @@ def sync_user(data: UserSync):
     return response_data
 
 @app.get("/api/user/profile/{email}")
-def get_user_profile(email: str):
+def get_user_profile(email: str, token_data: dict = Depends(verify_google_token)):
+    if token_data.get('email') != email:
+        raise HTTPException(status_code=403, detail="Not authorized to access this profile")
     db = SessionLocal()
     db_user = db.query(User).filter(User.email == email).first()
     db.close()
@@ -908,6 +929,7 @@ class PostCreate(BaseModel):
     location: str
     content: str
     tag: str
+    image: Optional[str] = None
 
 @app.post("/api/community")
 def add_community_post(post: PostCreate):
@@ -916,7 +938,8 @@ def add_community_post(post: PostCreate):
         author=post.author,
         location=post.location,
         content=post.content,
-        tag=post.tag
+        tag=post.tag,
+        image_data=post.image
     )
     db.add(db_post)
     db.commit()

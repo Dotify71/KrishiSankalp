@@ -118,6 +118,33 @@
         const farm = JSON.parse(localStorage.getItem('krishiFarmData')) || {};
         if (farm.location) document.getElementById('farmLocation').innerText = farm.location;
         if (farm.soil) document.getElementById('farmSoil').innerText = farm.soil;
+        
+        async function loadProfileStats() {
+            try {
+                const headers = {};
+                if (user.token) headers['Authorization'] = `Bearer ${user.token}`;
+                
+                // Fetch user profile
+                const profileRes = await fetch(`/api/user/profile/${user.email}`, { headers });
+                if (profileRes.ok) {
+                    const profileData = await profileRes.json();
+                    if (profileData.location) document.getElementById('farmLocation').innerText = profileData.location;
+                    if (profileData.soil) document.getElementById('farmSoil').innerText = profileData.soil;
+                }
+                
+                // Fetch public stats
+                const statsRes = await fetch('/api/stats');
+                if (statsRes.ok) {
+                    const statsData = await statsRes.json();
+                    document.getElementById('statQueries').innerText = statsData.total_queries || 0;
+                    document.getElementById('statStates').innerText = Object.keys(statsData.locations || {}).length;
+                }
+            } catch (e) {
+                console.error("Failed to load profile data:", e);
+            }
+        }
+        loadProfileStats();
+        
         function doLogout() { localStorage.removeItem('krishiUser'); window.location.href = '/login.html'; }
     </script>
 </body>

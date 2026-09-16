@@ -38,7 +38,7 @@
         if (localStorage.getItem('krishiUser')) window.location.href = '/';
         function handleCredentialResponse(response) {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
-            localStorage.setItem('krishiUser', JSON.stringify({ name: payload.name, email: payload.email, picture: payload.picture }));
+            localStorage.setItem('krishiUser', JSON.stringify({ name: payload.name, email: payload.email, picture: payload.picture, token: response.credential }));
             window.location.href = '/';
         }
     </script>

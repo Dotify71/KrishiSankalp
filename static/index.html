@@ -232,7 +232,14 @@
                     <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; border-left: 5px solid #0055a4;">
                         <h4 style="margin: 0 0 10px 0; color: #0055a4;" data-i18n="shareTitle">Did KrishiSankalp help you?</h4>
                         <p style="font-size: 0.9em; margin-bottom: 15px;" data-i18n="shareDesc">Share your story to help other farmers in your district.</p>
-                        <button onclick="showShareForm()" class="btn secondary" style="width: auto; padding: 10px 20px;" data-i18n="btnShare">Share My Success</button>
+                        <button id="showShareBtn" onclick="document.getElementById('shareFormContainer').style.display='block'; this.style.display='none';" class="btn secondary" style="width: auto; padding: 10px 20px;" data-i18n="btnShare">Share My Success</button>
+                        <div id="shareFormContainer" style="display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 8px;">
+                            <input type="text" id="shareContent" placeholder="Share your story... (e.g. AI saved my crop!)" style="width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                            <input type="text" id="shareTag" placeholder="Tag (e.g. Saved Crop)" style="width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                            <input type="file" id="shareImage" accept="image/*" style="margin-bottom: 10px;">
+                            <button onclick="submitShareForm()" class="btn" style="width: 100%; padding: 10px;">Post to Community</button>
+                            <button onclick="document.getElementById('shareFormContainer').style.display='none'; document.getElementById('showShareBtn').style.display='block';" class="btn secondary" style="width: 100%; padding: 10px; margin-top: 5px;">Cancel</button>
+                        </div>
                     </div>
                 </div>
             </div>
