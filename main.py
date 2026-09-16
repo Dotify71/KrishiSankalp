@@ -94,6 +94,24 @@ def seed_db():
             ]
             db.add_all(seeds)
             db.commit()
+            
+        if db.query(DBBuyerDemand).count() == 0:
+            logger.info("Seeding buyer demands...")
+            demo_demand = DBBuyerDemand(
+                id="DEMAND-001",
+                buyer_name="Green Leaf Restaurants",
+                buyer_type="Restaurant",
+                crop_name="Tomato",
+                quantity=500.0,
+                max_price=28.0,
+                quality="Grade A",
+                location="Bengaluru",
+                required_by="2026-09-20",
+                status="Open",
+                notes="Need fresh produce early morning."
+            )
+            db.add(demo_demand)
+            db.commit()
         db.close()
     except Exception as e:
         logger.error(f"Seeding failed: {e}")
@@ -184,6 +202,32 @@ class DBMarketListing(Base):
     quantity = Column(Float)
     expected_price = Column(Float)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class DBBuyerDemand(Base):
+    __tablename__ = "marketplace_demands"
+    id = Column(String, primary_key=True, index=True)
+    buyer_name = Column(String)
+    buyer_type = Column(String)
+    crop_name = Column(String, index=True)
+    quantity = Column(Float)
+    max_price = Column(Float)
+    quality = Column(String)
+    location = Column(String)
+    required_by = Column(String)
+    status = Column(String)
+    notes = Column(Text)
+
+class DBFarmerOffer(Base):
+    __tablename__ = "marketplace_offers"
+    id = Column(String, primary_key=True, index=True)
+    demand_id = Column(String, index=True)
+    farmer_name = Column(String)
+    quantity = Column(Float)
+    offered_price = Column(Float)
+    quality = Column(String)
+    available_date = Column(String)
+    message = Column(Text)
+    status = Column(String)
 
 class DBMarketOrder(Base):
     __tablename__ = "marketplace_orders"
@@ -1061,10 +1105,40 @@ from typing import List
 market_listings = []
 market_orders = []
 
+
+
+
 class MarketListing(BaseModel):
     crop_name: str
     quantity: float
     expected_price: float
+    location: Optional[str] = None
+    farmer_name: Optional[str] = None
+
+
+class BuyerDemand(BaseModel):
+    id: str
+    buyer_name: str
+    buyer_type: str
+    crop_name: str
+    quantity: float
+    max_price: float
+    quality: str
+    location: str
+    required_by: str
+    status: str
+    notes: Optional[str] = ""
+
+class FarmerOffer(BaseModel):
+    id: str
+    demand_id: str
+    farmer_name: str
+    quantity: float
+    offered_price: float
+    quality: str
+    available_date: str
+    message: Optional[str] = ""
+    status: str = "Open"
 
 class MarketOrder(BaseModel):
     buyer_name: str
@@ -1137,6 +1211,61 @@ def get_orders():
         for o in orders
     ]
     return {"status": "success", "data": result}
+
+
+@app.post("/api/marketplace/demands")
+def create_demand(demand: BuyerDemand):
+    buyer_demands.append(demand.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/demands")
+def get_demands():
+    return {"status": "success", "data": buyer_demands}
+
+@app.post("/api/marketplace/offers")
+def create_offer(offer: FarmerOffer):
+    farmer_offers.append(offer.dict())
+    return {"status": "success"}
+
+@app.get("/api/marketplace/offers")
+def get_offers():
+    return {"status": "success", "data": farmer_offers}
+
+@app.post("/api/marketplace/match")
+def match_demands(listing: MarketListing):
+    matches = []
+    for d in buyer_demands:
+        if d['status'] != "Open": continue
+        
+        # Heuristics for match score
+        score = 0
+        if d['crop_name'].lower() == listing.crop_name.lower():
+            score += 40
+        elif d['crop_name'].lower() in listing.crop_name.lower() or listing.crop_name.lower() in d['crop_name'].lower():
+            score += 20
+            
+        if listing.price <= d['max_price']:
+            score += 30
+        elif listing.price <= d['max_price'] * 1.1:
+            score += 15
+            
+        if listing.quantity >= d['quantity']:
+            score += 20
+        elif listing.quantity >= d['quantity'] * 0.5:
+            score += 10
+            
+        # Basic location heuristic (exact match)
+        if listing.location.lower() == d['location'].lower():
+            score += 10
+            
+        if score > 40:
+            matches.append({
+                "demand": d,
+                "score": min(score, 99) # Cap at 99%
+            })
+            
+    matches.sort(key=lambda x: x['score'], reverse=True)
+    return {"status": "success", "data": matches}
 
 # --- 4. Serve Frontend ---
 
