@@ -78,6 +78,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="location" data-i18n="labelLocation">Location</label>
+                        <button type="button" class="voice-btn" onclick="startVoiceSearch('location', this)" title="Click to speak in your language">🎙️</button>
                         <select id="location" required>
                             <option value="">Loading locations...</option>
                         </select>
@@ -234,7 +235,10 @@
                         <p style="font-size: 0.9em; margin-bottom: 15px;" data-i18n="shareDesc">Share your story to help other farmers in your district.</p>
                         <button id="showShareBtn" onclick="document.getElementById('shareFormContainer').style.display='block'; this.style.display='none';" class="btn secondary" style="width: auto; padding: 10px 20px;" data-i18n="btnShare">Share My Success</button>
                         <div id="shareFormContainer" style="display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 8px;">
-                            <input type="text" id="shareContent" placeholder="Share your story... (e.g. AI saved my crop!)" style="width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                            <div style="display: flex; gap: 5px; align-items: center; margin-bottom: 10px;">
+                                <input type="text" id="shareContent" placeholder="Share your story... (e.g. AI saved my crop!)" style="flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
+                                <button type="button" class="voice-btn" onclick="startVoiceSearch('shareContent', this)" title="Click to speak">🎙️</button>
+                            </div>
                             <input type="text" id="shareTag" placeholder="Tag (e.g. Saved Crop)" style="width: 100%; margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px;">
                             <input type="file" id="shareImage" accept="image/*" style="margin-bottom: 10px;">
                             <button onclick="submitShareForm()" class="btn" style="width: 100%; padding: 10px;">Post to Community</button>
@@ -265,6 +269,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label data-i18n="mktCropLabel">Crop / Product Name</label>
+                        <button type="button" class="voice-btn" onclick="startVoiceSearch('mktCropName', this)" title="Click to speak">🎙️</button>
                         <input type="text" id="mktCropName" required placeholder="e.g. Tomato">
                     </div>
                     <div class="form-group">

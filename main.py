@@ -167,6 +167,25 @@ class CommunityPost(Base):
     image_data = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
 
+class DBMarketListing(Base):
+    __tablename__ = "marketplace_listings"
+    id = Column(Integer, primary_key=True, index=True)
+    crop_name = Column(String, index=True)
+    quantity = Column(Float)
+    expected_price = Column(Float)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+class DBMarketOrder(Base):
+    __tablename__ = "marketplace_orders"
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(String, index=True)
+    buyer_name = Column(String)
+    crop_name = Column(String)
+    quantity = Column(Float)
+    price = Column(Float)
+    transport_cost = Column(Float)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
 Base.metadata.create_all(bind=engine)
 
 # --- 2. Pydantic Models for API ---
@@ -1046,21 +1065,67 @@ class MarketOrder(BaseModel):
 
 @app.post("/api/marketplace/list")
 def create_listing(listing: MarketListing):
-    market_listings.append(listing.dict())
+    db = SessionLocal()
+    db_listing = DBMarketListing(
+        crop_name=listing.crop_name,
+        quantity=listing.quantity,
+        expected_price=listing.expected_price
+    )
+    db.add(db_listing)
+    db.commit()
+    db.refresh(db_listing)
+    db.close()
     return {"status": "success"}
 
 @app.get("/api/marketplace/listings")
 def get_listings():
-    return {"status": "success", "data": market_listings}
+    db = SessionLocal()
+    listings = db.query(DBMarketListing).order_by(DBMarketListing.created_at.desc()).all()
+    db.close()
+    result = [
+        {
+            "crop_name": l.crop_name,
+            "quantity": l.quantity,
+            "expected_price": l.expected_price
+        }
+        for l in listings
+    ]
+    return {"status": "success", "data": result}
 
 @app.post("/api/marketplace/order")
 def create_order(order: MarketOrder):
-    market_orders.append(order.dict())
+    db = SessionLocal()
+    db_order = DBMarketOrder(
+        order_id=order.order_id,
+        buyer_name=order.buyer_name,
+        crop_name=order.crop_name,
+        quantity=order.quantity,
+        price=order.price,
+        transport_cost=order.transport_cost
+    )
+    db.add(db_order)
+    db.commit()
+    db.refresh(db_order)
+    db.close()
     return {"status": "success"}
 
 @app.get("/api/marketplace/orders")
 def get_orders():
-    return {"status": "success", "data": market_orders}
+    db = SessionLocal()
+    orders = db.query(DBMarketOrder).order_by(DBMarketOrder.created_at.desc()).all()
+    db.close()
+    result = [
+        {
+            "order_id": o.order_id,
+            "buyer_name": o.buyer_name,
+            "crop_name": o.crop_name,
+            "quantity": o.quantity,
+            "price": o.price,
+            "transport_cost": o.transport_cost
+        }
+        for o in orders
+    ]
+    return {"status": "success", "data": result}
 
 # --- 4. Serve Frontend ---
 
