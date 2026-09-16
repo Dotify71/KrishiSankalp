@@ -1,9 +1,11 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Query, Form, HTTPException, File, UploadFile
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from translations import translate_dict
 import base64
+import threading
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
@@ -34,7 +36,14 @@ logger = logging.getLogger(__name__)
 # Load environment variables
 load_dotenv()
 
-app = FastAPI(title="KrishiSankalp API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    seed_db()
+    # Start the keep-alive thread in the background
+    threading.Thread(target=keep_alive_ping, daemon=True).start()
+    yield
+
+app = FastAPI(title="KrishiSankalp API", lifespan=lifespan)
 
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
@@ -53,7 +62,6 @@ def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(secu
 
 
 # --- Keep-Alive Logic for Render Free Tier ---
-import threading
 import time
 
 def keep_alive_ping():
@@ -90,11 +98,7 @@ def seed_db():
     except Exception as e:
         logger.error(f"Seeding failed: {e}")
 
-@app.on_event("startup")
-async def startup_event():
-    seed_db()
-    # Start the keep-alive thread in the background
-    threading.Thread(target=keep_alive_ping, daemon=True).start()
+
 
 @app.get("/health")
 def health_check():
