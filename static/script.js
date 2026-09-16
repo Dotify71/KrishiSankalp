@@ -357,7 +357,7 @@ document.getElementById('farmForm').addEventListener('submit', async (e) => {
     document.getElementById('results').style.display = 'block';
     document.getElementById('cropsList').innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyzing your farm data securely...</p></div>';
     try {
-        const response = await fetch('/recommend', {
+        const response = await fetch('/recommend?lang=' + document.getElementById('langToggle').value, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(formData)
@@ -681,6 +681,7 @@ document.getElementById('imageInput').addEventListener('change', async (e) => {
         const compressedFile = await compressImage(file);
         const formData = new FormData();
         formData.append('file', compressedFile);
+        formData.append('lang', document.getElementById('langToggle').value);
 
         let res;
         try {
