@@ -1104,6 +1104,22 @@ from typing import List
 
 market_listings = []
 market_orders = []
+buyer_demands = [
+    {
+        "id": "DEMAND-001",
+        "buyer_name": "Green Leaf Restaurants",
+        "buyer_type": "Restaurant",
+        "crop_name": "Tomato",
+        "quantity": 500.0,
+        "max_price": 28.0,
+        "quality": "Grade A",
+        "location": "Bengaluru",
+        "required_by": "2026-09-20",
+        "status": "Open",
+        "notes": "Need fresh produce early morning."
+    }
+]
+farmer_offers = []
 
 
 
@@ -1111,7 +1127,8 @@ market_orders = []
 class MarketListing(BaseModel):
     crop_name: str
     quantity: float
-    expected_price: float
+    expected_price: Optional[float] = None
+    price: Optional[float] = None
     location: Optional[str] = None
     farmer_name: Optional[str] = None
 
@@ -1151,10 +1168,11 @@ class MarketOrder(BaseModel):
 @app.post("/api/marketplace/list")
 def create_listing(listing: MarketListing):
     db = SessionLocal()
+    effective_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
     db_listing = DBMarketListing(
         crop_name=listing.crop_name,
         quantity=listing.quantity,
-        expected_price=listing.expected_price
+        expected_price=effective_price
     )
     db.add(db_listing)
     db.commit()
@@ -1234,28 +1252,38 @@ def get_offers():
 @app.post("/api/marketplace/match")
 def match_demands(listing: MarketListing):
     matches = []
+    listing_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
+    listing_location = (listing.location or "").strip().lower()
+
     for d in buyer_demands:
-        if d['status'] != "Open": continue
+        if d.get('status') != "Open":
+            continue
         
         # Heuristics for match score
         score = 0
-        if d['crop_name'].lower() == listing.crop_name.lower():
+        demand_crop = d.get('crop_name', '').lower()
+        listing_crop = (listing.crop_name or '').lower()
+
+        if demand_crop == listing_crop:
             score += 40
-        elif d['crop_name'].lower() in listing.crop_name.lower() or listing.crop_name.lower() in d['crop_name'].lower():
+        elif demand_crop in listing_crop or listing_crop in demand_crop:
             score += 20
             
-        if listing.price <= d['max_price']:
+        max_price = float(d.get('max_price', 0.0))
+        if listing_price <= max_price:
             score += 30
-        elif listing.price <= d['max_price'] * 1.1:
+        elif listing_price <= max_price * 1.1:
             score += 15
             
-        if listing.quantity >= d['quantity']:
+        demand_qty = float(d.get('quantity', 0.0))
+        if listing.quantity >= demand_qty:
             score += 20
-        elif listing.quantity >= d['quantity'] * 0.5:
+        elif listing.quantity >= demand_qty * 0.5:
             score += 10
             
         # Basic location heuristic (exact match)
-        if listing.location.lower() == d['location'].lower():
+        demand_location = d.get('location', '').strip().lower()
+        if listing_location and demand_location and listing_location == demand_location:
             score += 10
             
         if score > 40:
