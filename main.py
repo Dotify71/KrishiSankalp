@@ -542,7 +542,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                 ]
 
                 # Robust Polygon Management: List -> Update or Create
-                list_res = requests.get(agro_url, timeout=10)
+                list_res = requests.get(agro_url, timeout=2)
                 poly_id = None
                 
                 if list_res.status_code == 200:
@@ -557,7 +557,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                                 "type": "Feature", "properties": {},
                                 "geometry": {"type": "Polygon", "coordinates": [coords]}
                             }
-                        }, timeout=10)
+                        }, timeout=2)
                         logger.info(f"Updated existing polygon {poly_id} for new location.")
                 
                 if not poly_id:
@@ -568,7 +568,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                             "type": "Feature", "properties": {},
                             "geometry": {"type": "Polygon", "coordinates": [coords]}
                         }
-                    }, timeout=10)
+                    }, timeout=2)
                     if poly_res.status_code == 201:
                         poly_id = poly_res.json()['id']
                 
@@ -577,7 +577,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                     start_time = end_time - (60 * 24 * 60 * 60) # 60 days for better chance of data
                     ndvi_url = f"https://api.agromonitoring.com/agro/1.0/ndvi/history?polyid={poly_id}&start={start_time}&end={end_time}&appid={AGRO_API_KEY}"
                     
-                    ndvi_res = requests.get(ndvi_url, timeout=10)
+                    ndvi_res = requests.get(ndvi_url, timeout=2)
                     if ndvi_res.status_code == 200:
                         history = ndvi_res.json()
                         if history:
@@ -587,7 +587,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                             
                             # Fetch the actual image tile (True Color or NDVI)
                             image_search_url = f"https://api.agromonitoring.com/agro/1.0/image/search?polyid={poly_id}&appid={AGRO_API_KEY}&start={start_time}&end={end_time}"
-                            img_search_res = requests.get(image_search_url, timeout=10)
+                            img_search_res = requests.get(image_search_url, timeout=2)
                             map_url = None
                             if img_search_res.status_code == 200:
                                 img_data = img_search_res.json()
