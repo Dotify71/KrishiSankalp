@@ -132,7 +132,15 @@ AGRO_API_KEY = os.getenv("AGRO_API_KEY")
 
 def verify_admin(credentials: HTTPBasicCredentials = Depends(security)):
     admin_user = os.getenv("ADMIN_USERNAME", "admin")
-    admin_pass = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_pass = os.getenv("ADMIN_PASSWORD")
+    
+    if not admin_pass:
+        logger.warning("ADMIN_PASSWORD environment variable is not configured. Admin access rejected.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Admin authentication is not configured",
+            headers={"WWW-Authenticate": "Basic"},
+        )
     
     correct_username = secrets.compare_digest(credentials.username, admin_user)
     correct_password = secrets.compare_digest(credentials.password, admin_pass)
