@@ -1104,22 +1104,6 @@ from typing import List
 
 market_listings = []
 market_orders = []
-buyer_demands = [
-    {
-        "id": "DEMAND-001",
-        "buyer_name": "Green Leaf Restaurants",
-        "buyer_type": "Restaurant",
-        "crop_name": "Tomato",
-        "quantity": 500.0,
-        "max_price": 28.0,
-        "quality": "Grade A",
-        "location": "Bengaluru",
-        "required_by": "2026-09-20",
-        "status": "Open",
-        "notes": "Need fresh produce early morning."
-    }
-]
-farmer_offers = []
 
 
 
@@ -1233,67 +1217,157 @@ def get_orders():
 
 @app.post("/api/marketplace/demands")
 def create_demand(demand: BuyerDemand):
-    buyer_demands.append(demand.dict())
-    return {"status": "success"}
+    db = SessionLocal()
+    try:
+        db_demand = DBBuyerDemand(
+            id=demand.id,
+            buyer_name=demand.buyer_name,
+            buyer_type=demand.buyer_type,
+            crop_name=demand.crop_name,
+            quantity=demand.quantity,
+            max_price=demand.max_price,
+            quality=demand.quality,
+            location=demand.location,
+            required_by=demand.required_by,
+            status=demand.status,
+            notes=demand.notes or ""
+        )
+        db.add(db_demand)
+        db.commit()
+        db.refresh(db_demand)
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/marketplace/demands")
 def get_demands():
-    return {"status": "success", "data": buyer_demands}
+    db = SessionLocal()
+    try:
+        demands = db.query(DBBuyerDemand).all()
+        result = [
+            {
+                "id": d.id,
+                "buyer_name": d.buyer_name,
+                "buyer_type": d.buyer_type,
+                "crop_name": d.crop_name,
+                "quantity": d.quantity,
+                "max_price": d.max_price,
+                "quality": d.quality,
+                "location": d.location,
+                "required_by": d.required_by,
+                "status": d.status,
+                "notes": d.notes
+            }
+            for d in demands
+        ]
+        return {"status": "success", "data": result}
+    finally:
+        db.close()
 
 @app.post("/api/marketplace/offers")
 def create_offer(offer: FarmerOffer):
-    farmer_offers.append(offer.dict())
-    return {"status": "success"}
+    db = SessionLocal()
+    try:
+        db_offer = DBFarmerOffer(
+            id=offer.id,
+            demand_id=offer.demand_id,
+            farmer_name=offer.farmer_name,
+            quantity=offer.quantity,
+            offered_price=offer.offered_price,
+            quality=offer.quality,
+            available_date=offer.available_date,
+            message=offer.message or "",
+            status=offer.status or "Open"
+        )
+        db.add(db_offer)
+        db.commit()
+        db.refresh(db_offer)
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/marketplace/offers")
 def get_offers():
-    return {"status": "success", "data": farmer_offers}
+    db = SessionLocal()
+    try:
+        offers = db.query(DBFarmerOffer).all()
+        result = [
+            {
+                "id": o.id,
+                "demand_id": o.demand_id,
+                "farmer_name": o.farmer_name,
+                "quantity": o.quantity,
+                "offered_price": o.offered_price,
+                "quality": o.quality,
+                "available_date": o.available_date,
+                "message": o.message,
+                "status": o.status
+            }
+            for o in offers
+        ]
+        return {"status": "success", "data": result}
+    finally:
+        db.close()
 
 @app.post("/api/marketplace/match")
 def match_demands(listing: MarketListing):
-    matches = []
-    listing_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
-    listing_location = (listing.location or "").strip().lower()
+    db = SessionLocal()
+    try:
+        demands = db.query(DBBuyerDemand).filter(DBBuyerDemand.status == "Open").all()
+        matches = []
+        listing_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
+        listing_location = (listing.location or "").strip().lower()
 
-    for d in buyer_demands:
-        if d.get('status') != "Open":
-            continue
-        
-        # Heuristics for match score
-        score = 0
-        demand_crop = d.get('crop_name', '').lower()
-        listing_crop = (listing.crop_name or '').lower()
+        for d in demands:
+            # Heuristics for match score
+            score = 0
+            demand_crop = (d.crop_name or '').lower()
+            listing_crop = (listing.crop_name or '').lower()
 
-        if demand_crop == listing_crop:
-            score += 40
-        elif demand_crop in listing_crop or listing_crop in demand_crop:
-            score += 20
-            
-        max_price = float(d.get('max_price', 0.0))
-        if listing_price <= max_price:
-            score += 30
-        elif listing_price <= max_price * 1.1:
-            score += 15
-            
-        demand_qty = float(d.get('quantity', 0.0))
-        if listing.quantity >= demand_qty:
-            score += 20
-        elif listing.quantity >= demand_qty * 0.5:
-            score += 10
-            
-        # Basic location heuristic (exact match)
-        demand_location = d.get('location', '').strip().lower()
-        if listing_location and demand_location and listing_location == demand_location:
-            score += 10
-            
-        if score > 40:
-            matches.append({
-                "demand": d,
-                "score": min(score, 99) # Cap at 99%
-            })
-            
-    matches.sort(key=lambda x: x['score'], reverse=True)
-    return {"status": "success", "data": matches}
+            if demand_crop == listing_crop:
+                score += 40
+            elif demand_crop in listing_crop or listing_crop in demand_crop:
+                score += 20
+                
+            max_price = float(d.max_price or 0.0)
+            if listing_price <= max_price:
+                score += 30
+            elif listing_price <= max_price * 1.1:
+                score += 15
+                
+            demand_qty = float(d.quantity or 0.0)
+            if listing.quantity >= demand_qty:
+                score += 20
+            elif listing.quantity >= demand_qty * 0.5:
+                score += 10
+                
+            # Basic location heuristic (exact match)
+            demand_location = (d.location or '').strip().lower()
+            if listing_location and demand_location and listing_location == demand_location:
+                score += 10
+                
+            if score > 40:
+                matches.append({
+                    "demand": {
+                        "id": d.id,
+                        "buyer_name": d.buyer_name,
+                        "buyer_type": d.buyer_type,
+                        "crop_name": d.crop_name,
+                        "quantity": d.quantity,
+                        "max_price": d.max_price,
+                        "quality": d.quality,
+                        "location": d.location,
+                        "required_by": d.required_by,
+                        "status": d.status,
+                        "notes": d.notes
+                    },
+                    "score": min(score, 99) # Cap at 99%
+                })
+                
+        matches.sort(key=lambda x: x['score'], reverse=True)
+        return {"status": "success", "data": matches}
+    finally:
+        db.close()
 
 # --- 4. Serve Frontend ---
 
