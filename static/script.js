@@ -109,6 +109,26 @@ const translations = {
         speechWeather: "सध्याचे तापमान {temp} आहे आणि {rain} पाऊस पडत आहे। ",
         speechCrops: "आम्ही खालील पिकांची शिफारस करतो: ",
         speechCropDetail: "{name}। अपेक्षित उत्पन्न {yield} आहे, आणि बाजार भाव {price} रुपये प्रति क्विंटल आहे। "
+    },
+    gu: { // Gujarati
+        title: "🌾 AI કૃષિ સહયોગી", subtitle: "સ્માર્ટ ખેતી પાક ભલામણ પ્રણાલી", btn: "AI ભલામણ મેળવો",
+        farmDetails: "ખેતરની વિગતો", labelLocation: "સ્થળ", labelSoil: "જમીનનો પ્રકાર", labelSeason: "ઋતુ / મોસમ",
+        btnListen: "🔊 સાંભળો", btnPrint: "🖨️ પ્રિન્ટ", headDiagnosis: "AI રોગ નિદાન",
+        btnUpload: "📸 ફોટો લો અથવા અપલોડ કરો", analyzing: "AI તમારા પાકનું વિશ્લેષણ કરી રહ્યું છે...", healthy: "સ્વસ્થ", sick: "રોગ જણાયો",
+        speechIntro: "{location} માટે તમારી કૃષિ સંકલ્પ ભલામણ અહીં છે. ",
+        speechWeather: "હાલનું તાપમાન {temp} છે અને {rain} વરસાદ થઈ રહ્યો છે. ",
+        speechCrops: "અમે નીચેના પાકોની ભલામણ કરીએ છીએ: ",
+        speechCropDetail: "{name}. અપેક્ષિત ઉત્પાદન {yield} છે, અને વર્તમાન બજાર ભાવ {price} રૂપિયા પ્રતિ ક્વિન્ટલ છે. "
+    },
+    bn: { // Bengali
+        title: "🌾 এআই কৃষি সহযোগী", subtitle: "স্মার্ট কৃষি ফসল সুপারিশ ব্যবস্থা", btn: "এআই সুপারিশ পান",
+        farmDetails: "খামারের বিবরণ", labelLocation: "অবস্থান", labelSoil: "মাটির ধরন", labelSeason: "মৌসুম",
+        btnListen: "🔊 শুনুন", btnPrint: "🖨️ প্রিন্ট", headDiagnosis: "এআই রোগ নির্ণয়",
+        btnUpload: "📸 ছবি তুলুন বা আপলোড করুন", analyzing: "এআই আপনার ফসল বিশ্লেষণ করছে...", healthy: "সুস্থ", sick: "রোগ সনাক্ত হয়েছে",
+        speechIntro: "{location}-এর জন্য আপনার কৃষি সংকল্প সুপারিশ এখানে রয়েছে। ",
+        speechWeather: "বর্তমান তাপমাত্রা {temp} এবং {rain} বৃষ্টিপাত হচ্ছে। ",
+        speechCrops: "আমরা নিম্নলিখিত ফসলের সুপারিশ করছি: ",
+        speechCropDetail: "{name}। প্রত্যাশিত ফলন {yield}, এবং বর্তমান বাজার মূল্য কুইন্টাল প্রতি {price} টাকা। "
     }
 };
 
@@ -797,6 +817,8 @@ function speak(text, lang) {
         'hi': 'hi-IN',
         'pa': 'pa-IN',
         'mr': 'mr-IN',
+        'gu': 'gu-IN',
+        'bn': 'bn-IN',
         'en': 'en-IN'
     };
     
@@ -1234,7 +1256,9 @@ window.startVoiceSearch = function(targetInputId, micBtnEl) {
             'en': 'en-IN',
             'hi': 'hi-IN',
             'pa': 'pa-IN',
-            'mr': 'mr-IN'
+            'mr': 'mr-IN',
+            'gu': 'gu-IN',
+            'bn': 'bn-IN'
         };
         recognition.lang = langMap[currentLang] || 'en-IN';
         recognition.interimResults = false;
