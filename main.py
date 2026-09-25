@@ -306,12 +306,18 @@ def get_recommendation(data: FarmData, lang: str = "en"):
     humidity = "60%"
     all_potential_crops = []
 
+    DEFAULT_INSURANCE = {
+        "kharif": {"premium_rate": 0.02, "name": "Kharif Insurance (PMFBY)"},
+        "rabi": {"premium_rate": 0.015, "name": "Rabi Insurance (PMFBY)"},
+        "commercial": {"premium_rate": 0.05, "name": "Commercial/Horticulture Insurance"}
+    }
+
     # 1. Load Scalable Knowledge Base
     try:
         with open("krishi_data.json", "r") as f:
             kb = json.load(f)
     except:
-        kb = {"regions": {}, "insurance": {}}
+        kb = {"regions": {}, "insurance": DEFAULT_INSURANCE}
 
     # Determine Region Key via Mapping
     REGION_MAP = {
@@ -510,13 +516,21 @@ def get_recommendation(data: FarmData, lang: str = "en"):
 
     # 7. Government Schemes & Insurance Logic
     ins_key = "kharif" if is_monsoon else "rabi" if is_winter else "commercial"
-    insurance_data = kb["insurance"].get(ins_key, kb["insurance"].get("commercial"))
+    ins_map = kb.get("insurance") or DEFAULT_INSURANCE
+    insurance_data = (
+        ins_map.get(ins_key)
+        or ins_map.get("commercial")
+        or DEFAULT_INSURANCE.get(ins_key)
+        or DEFAULT_INSURANCE["commercial"]
+    )
     
-    premium_amt = int(budget * insurance_data["premium_rate"])
+    premium_rate = insurance_data.get("premium_rate", 0.05) if isinstance(insurance_data, dict) else 0.05
+    ins_name = insurance_data.get("name", "PMFBY Crop Insurance") if isinstance(insurance_data, dict) else "PMFBY Crop Insurance"
+    premium_amt = int(budget * premium_rate)
     
     schemes = [
         {"name": "PM-Kisan Samman Nidhi", "desc": "Income support of ₹6,000 per year.", "eligibility": "All landholding farmers"},
-        {"name": insurance_data["name"], "desc": f"Recommended insurance coverage for your {current_month} crops. Your estimated premium is ₹{premium_amt:,}.", "eligibility": f"Current Season: {current_month}"}
+        {"name": ins_name, "desc": f"Recommended insurance coverage for your {current_month} crops. Your estimated premium is ₹{premium_amt:,}.", "eligibility": f"Current Season: {current_month}"}
     ]
     
     # Merge with Regional Schemes
