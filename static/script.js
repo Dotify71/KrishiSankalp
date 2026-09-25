@@ -571,6 +571,13 @@ function displayResults(data) {
     loadCommunity();
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
 async function loadCommunity() {
     const list = document.getElementById('postsList');
     try {
@@ -596,11 +603,11 @@ async function loadCommunity() {
 
         list.innerHTML = posts.map(p => `
             <div class="crop-item" style="border-left-color: #0055a4;">
-                <div style="font-weight: bold; color: #0055a4;">${p.author} • ${p.location}</div>
-                <p style="margin: 5px 0; font-size: 0.9em;">"${p.content}"</p>
-                ${p.image_data ? `<img src="${p.image_data}" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: block;">` : ''}
+                <div style="font-weight: bold; color: #0055a4;">${escapeHtml(p.author)} • ${escapeHtml(p.location)}</div>
+                <p style="margin: 5px 0; font-size: 0.9em;">"${escapeHtml(p.content)}"</p>
+                ${p.image_data && p.image_data.startsWith('data:image/') ? `<img src="${p.image_data}" style="max-width: 100%; max-height: 200px; border-radius: 8px; margin-top: 10px; display: block;">` : ''}
                 <div style="margin-top: 8px;">
-                    <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ ${p.tag}</span>
+                    <span style="font-size: 0.75em; background: #e3f2fd; padding: 2px 8px; border-radius: 10px;">✅ ${escapeHtml(p.tag)}</span>
                 </div>
             </div>
         `).join('');

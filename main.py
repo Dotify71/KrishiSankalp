@@ -12,6 +12,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, 
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 from typing import Optional
+import html
 import json
 import logging
 import os
@@ -950,6 +951,13 @@ def get_admin_page(username: str = Depends(verify_admin)):
             } catch (e) { console.error("Users load failed", e); }
         }
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         async function loadPosts() {
             try {
                 const res = await fetch('/api/community?limit=50');
@@ -961,9 +969,9 @@ def get_admin_page(username: str = Depends(verify_admin)):
                 }
                 tbody.innerHTML = posts.map(p => `
                     <tr>
-                        <td><b>${p.author}</b></td>
-                        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.content}</td>
-                        <td>${p.tag}</td>
+                        <td><b>${escapeHtml(p.author)}</b></td>
+                        <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.content)}</td>
+                        <td>${escapeHtml(p.tag)}</td>
                         <td><button class="action-btn delete" onclick="deletePost(${p.id})">Remove</button></td>
                     </tr>
                 `).join('');
@@ -1002,10 +1010,10 @@ class PostCreate(BaseModel):
 def add_community_post(post: PostCreate):
     db = SessionLocal()
     db_post = CommunityPost(
-        author=post.author,
-        location=post.location,
-        content=post.content,
-        tag=post.tag,
+        author=html.escape(post.author.strip()),
+        location=html.escape(post.location.strip()),
+        content=html.escape(post.content.strip()),
+        tag=html.escape(post.tag.strip()),
         image_data=post.image
     )
     db.add(db_post)
