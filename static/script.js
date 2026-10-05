@@ -912,29 +912,64 @@ function planToSell(cropName) {
 
 // --- BUYER DEMANDS & OFFERS LOGIC ---
 async function submitBuyerDemand() {
+    let buyerName = (document.getElementById('demBuyerName').value || '').trim();
+    let buyerType = (document.getElementById('demBuyerType').value || '').trim();
+    let cropName = (document.getElementById('demProduct').value || '').trim();
+    let qtyVal = document.getElementById('demQty').value;
+    let priceVal = document.getElementById('demPrice').value;
+    let quality = (document.getElementById('demQuality').value || '').trim();
+    let location = (document.getElementById('demLocation').value || '').trim();
+    let requiredBy = (document.getElementById('demDate').value || '').trim();
+    let notes = (document.getElementById('demNotes').value || '').trim();
+
+    let qty = parseFloat(qtyVal);
+    let maxPrice = parseFloat(priceVal);
+
+    if (!buyerName || !buyerType || !cropName || !requiredBy) {
+        alert("Please fill in all required fields (Buyer Name, Buyer Type, Crop, and Required Date).");
+        return;
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+        alert("Please enter a valid positive quantity (kg).");
+        return;
+    }
+
+    if (isNaN(maxPrice) || maxPrice <= 0) {
+        alert("Please enter a valid positive maximum price (₹/kg).");
+        return;
+    }
+
     let payload = {
         id: "DEMAND-" + Math.floor(Math.random() * 10000),
-        buyer_name: document.getElementById('demBuyerName').value,
-        buyer_type: document.getElementById('demBuyerType').value,
-        crop_name: document.getElementById('demProduct').value,
-        quantity: parseFloat(document.getElementById('demQty').value),
-        max_price: parseFloat(document.getElementById('demPrice').value),
-        quality: document.getElementById('demQuality').value,
-        location: document.getElementById('demLocation').value,
-        required_by: document.getElementById('demDate').value,
+        buyer_name: buyerName,
+        buyer_type: buyerType,
+        crop_name: cropName,
+        quantity: qty,
+        max_price: maxPrice,
+        quality: quality,
+        location: location,
+        required_by: requiredBy,
         status: "Open",
-        notes: document.getElementById('demNotes').value
+        notes: notes
     };
     
-    let res = await fetch('/api/marketplace/demands', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    });
-    if(res.ok) {
-        alert("Buyer Demand Created!");
-        document.getElementById('demandForm').reset();
-        loadBuyerDemands();
+    try {
+        let res = await fetch('/api/marketplace/demands', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            alert("Buyer Demand Created!");
+            document.getElementById('demandForm').reset();
+            loadBuyerDemands();
+        } else {
+            alert("Failed to create buyer demand. Please try again.");
+        }
+    } catch(e) {
+        console.error("Error creating buyer demand:", e);
+        alert("Network error while creating buyer demand.");
     }
 }
 
@@ -975,27 +1010,64 @@ function openOfferModal(demandId) {
 }
 
 async function submitOffer() {
+    let demandId = (document.getElementById('offerDemandId').value || '').trim();
+    let qtyVal = document.getElementById('offQty').value;
+    let priceVal = document.getElementById('offPrice').value;
+    let quality = (document.getElementById('offQuality').value || '').trim();
+    let availableDate = (document.getElementById('offDate').value || '').trim();
+    let message = (document.getElementById('offMessage').value || '').trim();
+
+    let qty = parseFloat(qtyVal);
+    let offeredPrice = parseFloat(priceVal);
+
+    if (!demandId) {
+        alert("Invalid demand reference for this offer.");
+        return;
+    }
+
+    if (!quality || !availableDate) {
+        alert("Please provide quality/grade and available date.");
+        return;
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+        alert("Please enter a valid positive quantity (kg).");
+        return;
+    }
+
+    if (isNaN(offeredPrice) || offeredPrice <= 0) {
+        alert("Please enter a valid positive offered price (₹/kg).");
+        return;
+    }
+
     let payload = {
         id: "OFFER-" + Math.floor(Math.random() * 10000),
-        demand_id: document.getElementById('offerDemandId').value,
+        demand_id: demandId,
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer",
-        quantity: parseFloat(document.getElementById('offQty').value),
-        offered_price: parseFloat(document.getElementById('offPrice').value),
-        quality: document.getElementById('offQuality').value,
-        available_date: document.getElementById('offDate').value,
-        message: document.getElementById('offMessage').value
+        quantity: qty,
+        offered_price: offeredPrice,
+        quality: quality,
+        available_date: availableDate,
+        message: message
     };
     
-    let res = await fetch('/api/marketplace/offers', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    });
-    if(res.ok) {
-        alert("Offer sent successfully!");
-        document.getElementById('offerForm').reset();
-        document.getElementById('offerModal').style.display = 'none';
-        loadMyOffers();
+    try {
+        let res = await fetch('/api/marketplace/offers', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        if(res.ok) {
+            alert("Offer sent successfully!");
+            document.getElementById('offerForm').reset();
+            document.getElementById('offerModal').style.display = 'none';
+            loadMyOffers();
+        } else {
+            alert("Failed to submit offer. Please try again.");
+        }
+    } catch(e) {
+        console.error("Error submitting offer:", e);
+        alert("Network error while submitting offer.");
     }
 }
 
@@ -1185,9 +1257,27 @@ async function runMarketplaceAI(cropName, qty, expectedPrice) {
 }
 
 async function submitFarmerListing() {
-    let cropName = document.getElementById('sellCrop').value;
-    let qty = parseFloat(document.getElementById('sellQty').value);
-    let expectedPrice = parseFloat(document.getElementById('sellPrice').value);
+    let cropName = (document.getElementById('sellCrop').value || '').trim();
+    let qtyVal = document.getElementById('sellQty').value;
+    let expectedPriceVal = document.getElementById('sellPrice').value;
+
+    let qty = parseFloat(qtyVal);
+    let expectedPrice = parseFloat(expectedPriceVal);
+
+    if (!cropName) {
+        alert("Please enter a valid crop / product name.");
+        return;
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+        alert("Please enter a valid positive quantity (kg).");
+        return;
+    }
+
+    if (isNaN(expectedPrice) || expectedPrice <= 0) {
+        alert("Please enter a valid positive expected price (₹/kg).");
+        return;
+    }
     
     // Clear previous matches
     document.getElementById('buyersList').innerHTML = "";
@@ -1201,32 +1291,42 @@ async function submitFarmerListing() {
         farmer_name: (JSON.parse(localStorage.getItem('krishiUser')) || {}).name || "Farmer"
     };
     
-    // Save listing to backend
-    await fetch('/api/marketplace/list', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(listing)
-    });
-    
-    // Also save listing logic
-    let html = `
-        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; margin-bottom: 15px;">
-            <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
-                <strong style="color: #2e7d32;">${listing.crop_name}</strong>
-                <span style="background:#e8f5e9; color:#2e7d32; font-size:0.8em; padding:2px 8px; border-radius:12px;">Active</span>
+    try {
+        // Save listing to backend
+        let res = await fetch('/api/marketplace/list', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(listing)
+        });
+
+        if (!res.ok) {
+            alert("Failed to list crop. Please try again.");
+            return;
+        }
+        
+        // Also save listing logic
+        let html = `
+            <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background: #fff; margin-bottom: 15px;">
+                <div style="display:flex; justify-content: space-between; border-bottom:1px solid #eee; padding-bottom:10px; margin-bottom:10px;">
+                    <strong style="color: #2e7d32;">${listing.crop_name}</strong>
+                    <span style="background:#e8f5e9; color:#2e7d32; font-size:0.8em; padding:2px 8px; border-radius:12px;">Active</span>
+                </div>
+                <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${listing.quantity} kg</p>
+                <p style="margin:5px 0; font-size:0.9em;"><strong>Expected Price:</strong> ₹${listing.expected_price}/kg</p>
+                <p style="margin:5px 0; font-size:0.9em;"><strong>Location:</strong> ${listing.location}</p>
             </div>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Quantity:</strong> ${listing.quantity} kg</p>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Expected Price:</strong> ₹${listing.expected_price}/kg</p>
-            <p style="margin:5px 0; font-size:0.9em;"><strong>Location:</strong> ${listing.location}</p>
-        </div>
-    `;
-    document.getElementById('myListingsList').innerHTML = html + document.getElementById('myListingsList').innerHTML;
-    
-    alert("Crop listed successfully!");
-    document.getElementById('sellForm').reset();
-    
-    // Trigger AI match search
-    findMatchesForFarmer(cropName, qty, expectedPrice);
+        `;
+        document.getElementById('myListingsList').innerHTML = html + document.getElementById('myListingsList').innerHTML;
+        
+        alert("Crop listed successfully!");
+        document.getElementById('sellForm').reset();
+        
+        // Trigger AI match search
+        findMatchesForFarmer(cropName, qty, expectedPrice);
+    } catch(e) {
+        console.error("Error submitting listing:", e);
+        alert("Network error while listing crop.");
+    }
 }
 // --- SPEECH-TO-TEXT VOICE SEARCH (Web Speech API) ---
 let activeSpeechRecognition = null;
