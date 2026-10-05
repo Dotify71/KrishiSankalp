@@ -8,7 +8,7 @@ import base64
 import threading
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 from typing import Optional
@@ -716,72 +716,87 @@ def get_user_profile(email: str, token_data: dict = Depends(verify_google_token)
 def get_public_stats():
     """Public stats endpoint — no auth required. Used by the profile page."""
     db = SessionLocal()
-    queries = db.query(FarmQuery).all()
-    locations = {}
-    seasons = {}
-    for q in queries:
-        loc = q.location if q.location else "Unknown"
-        locations[loc] = locations.get(loc, 0) + 1
-        sea = q.season if q.season else "Unknown"
-        seasons[sea] = seasons.get(sea, 0) + 1
-    db.close()
-    return {
-        "total_queries": len(queries),
-        "locations": locations,
-        "seasons": seasons
-    }
+    try:
+        total_queries = db.query(func.count(FarmQuery.id)).scalar() or 0
+        loc_rows = db.query(FarmQuery.location, func.count(FarmQuery.id)).group_by(FarmQuery.location).all()
+        locations = {}
+        for loc, count in loc_rows:
+            key = loc if loc else "Unknown"
+            locations[key] = locations.get(key, 0) + count
+
+        season_rows = db.query(FarmQuery.season, func.count(FarmQuery.id)).group_by(FarmQuery.season).all()
+        seasons = {}
+        for sea, count in season_rows:
+            key = sea if sea else "Unknown"
+            seasons[key] = seasons.get(key, 0) + count
+
+        return {
+            "total_queries": total_queries,
+            "locations": locations,
+            "seasons": seasons
+        }
+    finally:
+        db.close()
+
 @app.get("/api/admin/users")
 def get_all_users(username: str = Depends(verify_admin)):
     db = SessionLocal()
-    users = db.query(User).order_by(User.last_login.desc()).all()
-    db.close()
-    return users
+    try:
+        users = db.query(User).order_by(User.last_login.desc()).all()
+        return users
+    finally:
+        db.close()
 
 @app.delete("/api/admin/community/{post_id}")
 def delete_community_post(post_id: int, username: str = Depends(verify_admin)):
     db = SessionLocal()
-    post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
-    if post:
-        db.delete(post)
-        db.commit()
-    db.close()
-    return {"status": "success"}
+    try:
+        post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
+        if post:
+            db.delete(post)
+            db.commit()
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/admin/data")
 def get_admin_data(username: str = Depends(verify_admin)):
     db = SessionLocal()
-    queries = db.query(FarmQuery).order_by(FarmQuery.timestamp.desc()).all()
-    user_count = db.query(User).count()
-    post_count = db.query(CommunityPost).count()
-    
-    locations = {}
-    seasons = {}
-    recent_activity = []
-    
-    for q in queries:
-        loc = q.location if q.location else "Unknown"
-        locations[loc] = locations.get(loc, 0) + 1
-        sea = q.season if q.season else "Unknown"
-        seasons[sea] = seasons.get(sea, 0) + 1
+    try:
+        total_queries = db.query(func.count(FarmQuery.id)).scalar() or 0
+        user_count = db.query(func.count(User.email)).scalar() or 0
+        post_count = db.query(func.count(CommunityPost.id)).scalar() or 0
         
-    for q in queries[:5]:
-        recent_activity.append({
+        loc_rows = db.query(FarmQuery.location, func.count(FarmQuery.id)).group_by(FarmQuery.location).all()
+        locations = {}
+        for loc, count in loc_rows:
+            key = loc if loc else "Unknown"
+            locations[key] = locations.get(key, 0) + count
+            
+        season_rows = db.query(FarmQuery.season, func.count(FarmQuery.id)).group_by(FarmQuery.season).all()
+        seasons = {}
+        for sea, count in season_rows:
+            key = sea if sea else "Unknown"
+            seasons[key] = seasons.get(key, 0) + count
+            
+        recent_queries = db.query(FarmQuery).order_by(FarmQuery.timestamp.desc()).limit(5).all()
+        recent_activity = [{
             "location": q.location,
             "soil": q.soil,
             "season": q.season,
             "time": q.timestamp.strftime("%H:%M, %d %b")
-        })
+        } for q in recent_queries]
         
-    db.close()
-    
-    return {
-        "total_queries": len(queries),
-        "total_users": user_count,
-        "total_posts": post_count,
-        "locations": locations,
-        "seasons": seasons,
-        "recent": recent_activity
-    }
+        return {
+            "total_queries": total_queries,
+            "total_users": user_count,
+            "total_posts": post_count,
+            "locations": locations,
+            "seasons": seasons,
+            "recent": recent_activity
+        }
+    finally:
+        db.close()
 
 @app.get("/admin", response_class=HTMLResponse)
 def get_admin_page(username: str = Depends(verify_admin)):
