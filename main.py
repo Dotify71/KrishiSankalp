@@ -740,12 +740,15 @@ def get_all_users(username: str = Depends(verify_admin)):
 @app.delete("/api/admin/community/{post_id}")
 def delete_community_post(post_id: int, username: str = Depends(verify_admin)):
     db = SessionLocal()
-    post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
-    if post:
+    try:
+        post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
         db.delete(post)
         db.commit()
-    db.close()
-    return {"status": "success"}
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/admin/data")
 def get_admin_data(username: str = Depends(verify_admin)):
