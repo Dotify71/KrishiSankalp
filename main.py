@@ -72,6 +72,7 @@ def keep_alive_ping():
         logger.info("RENDER_EXTERNAL_URL not set, skipping self-ping.")
         return
     
+    url = url.rstrip("/")
     logger.info(f"Starting keep-alive background thread for: {url}")
     while True:
         try:
