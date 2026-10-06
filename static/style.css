@@ -178,9 +178,83 @@ body {
 }
 
 @media print {
-    .gov-banner, .card:not(.results), .tabs, button { display: none !important; }
-    .results { display: block !important; box-shadow: none; border: none; }
-    .tab-content { display: block !important; margin-bottom: 20px; }
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body {
+        background: none !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        min-height: auto !important;
+    }
+
+    .container {
+        max-width: 100% !important;
+        width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .gov-banner,
+    .app-nav,
+    .voice-btn,
+    .diagnosis-card,
+    #farmForm,
+    .card:not(.results),
+    .tabs,
+    #locationModal,
+    #qrModal,
+    #offerModal,
+    footer,
+    button,
+    input,
+    select,
+    textarea {
+        display: none !important;
+    }
+
+    .results {
+        display: block !important;
+        box-shadow: none !important;
+        border: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: transparent !important;
+    }
+
+    .tab-content {
+        display: block !important;
+        margin-bottom: 25px !important;
+        page-break-inside: avoid;
+    }
+
+    .crop-item,
+    .weather-info {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        page-break-inside: avoid;
+        margin: 10px 0 !important;
+        padding: 15px !important;
+        background: #fafafa !important;
+    }
+
+    .header {
+        margin: 10px 0 20px 0 !important;
+        padding-bottom: 10px !important;
+        border-bottom: 2px solid #107c41 !important;
+    }
+
+    .header h1 {
+        font-size: 1.8em !important;
+        color: #002244 !important;
+    }
+
+    .header p {
+        font-size: 1em !important;
+        color: #555 !important;
+    }
 }
 
 /* Voice Search Button & Animations */
