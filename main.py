@@ -8,7 +8,7 @@ import base64
 import threading
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, Text, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 import datetime
 from typing import Optional
@@ -724,16 +724,21 @@ def get_public_stats():
     """Public stats endpoint — no auth required. Used by the profile page."""
     db = SessionLocal()
     try:
-        queries = db.query(FarmQuery).all()
+        total_queries = db.query(func.count(FarmQuery.id)).scalar() or 0
+        loc_rows = db.query(FarmQuery.location, func.count(FarmQuery.id)).group_by(FarmQuery.location).all()
         locations = {}
+        for loc, count in loc_rows:
+            key = loc if loc else "Unknown"
+            locations[key] = locations.get(key, 0) + count
+
+        season_rows = db.query(FarmQuery.season, func.count(FarmQuery.id)).group_by(FarmQuery.season).all()
         seasons = {}
-        for q in queries:
-            loc = q.location if q.location else "Unknown"
-            locations[loc] = locations.get(loc, 0) + 1
-            sea = q.season if q.season else "Unknown"
-            seasons[sea] = seasons.get(sea, 0) + 1
+        for sea, count in season_rows:
+            key = sea if sea else "Unknown"
+            seasons[key] = seasons.get(key, 0) + count
+
         return {
-            "total_queries": len(queries),
+            "total_queries": total_queries,
             "locations": locations,
             "seasons": seasons
         }
@@ -765,35 +770,37 @@ def delete_community_post(post_id: int, username: str = Depends(verify_admin)):
 def get_admin_data(username: str = Depends(verify_admin)):
     db = SessionLocal()
     try:
-        queries = db.query(FarmQuery).order_by(FarmQuery.timestamp.desc()).all()
-        user_count = db.query(User).count()
-        post_count = db.query(CommunityPost).count()
+        total_queries = db.query(func.count(FarmQuery.id)).scalar() or 0
+        user_count = db.query(func.count(User.email)).scalar() or 0
+        post_count = db.query(func.count(CommunityPost.id)).scalar() or 0
         
+        loc_rows = db.query(FarmQuery.location, func.count(FarmQuery.id)).group_by(FarmQuery.location).all()
         locations = {}
+        for loc, count in loc_rows:
+            key = loc if loc else "Unknown"
+            locations[key] = locations.get(key, 0) + count
+            
+        season_rows = db.query(FarmQuery.season, func.count(FarmQuery.id)).group_by(FarmQuery.season).all()
         seasons = {}
-        recent_activity = []
+        for sea, count in season_rows:
+            key = sea if sea else "Unknown"
+            seasons[key] = seasons.get(key, 0) + count
+            
+        recent_queries = db.query(FarmQuery).order_by(FarmQuery.timestamp.desc()).limit(5).all()
+        recent_activity = [{
+            "location": q.location,
+            "soil": q.soil,
+            "season": q.season,
+            "time": q.timestamp.strftime("%H:%M, %d %b")
+        } for q in recent_queries]
         
-        for q in queries:
-            loc = q.location if q.location else "Unknown"
-            locations[loc] = locations.get(loc, 0) + 1
-            sea = q.season if q.season else "Unknown"
-            seasons[sea] = seasons.get(sea, 0) + 1
-            
-        for q in queries[:5]:
-            recent_activity.append({
-                "location": q.location,
-                "soil": q.soil,
-                "season": q.season,
-                "time": q.timestamp.strftime("%H:%M, %d %b")
-            })
-            
         return {
-            "total_queries": len(queries),
+            "total_queries": total_queries,
             "total_users": user_count,
             "total_posts": post_count,
             "locations": locations,
             "seasons": seasons,
-            "recent_activity": recent_activity
+            "recent": recent_activity
         }
     finally:
         db.close()
