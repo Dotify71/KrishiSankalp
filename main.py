@@ -374,6 +374,19 @@ def get_recommendation(request: Request, data: FarmData, lang: str = "en"):
     # Calculate budget available PER ACRE
     budget_per_acre = budget / farm_size
     
+    # Expand water source keywords to cover compatible irrigation methods
+    expanded_water_keywords = set(water_source.replace("/", " ").replace("-", " ").split())
+    if any(k in water_source for k in ["drip", "sprinkler"]):
+        expanded_water_keywords.update(["drip", "sprinkler", "tube_well", "tubewell", "borewell", "canal", "well", "rainfed"])
+    if any(k in water_source for k in ["pond", "tank"]):
+        expanded_water_keywords.update(["pond", "tank", "canal", "tube_well", "tubewell", "borewell", "well", "rainfed"])
+    if any(k in water_source for k in ["tube well", "tubewell", "borewell", "open well", "well"]):
+        expanded_water_keywords.update(["tube_well", "tubewell", "borewell", "well", "canal", "drip", "rainfed"])
+    if any(k in water_source for k in ["canal", "river", "stream"]):
+        expanded_water_keywords.update(["canal", "river", "stream", "tube_well", "tubewell", "borewell", "well", "drip", "rainfed"])
+    if "rainfed" in water_source:
+        expanded_water_keywords.update(["rainfed"])
+
     regional_crops = []
     for c in all_potential_crops:
         # 1. Budget Check: Can they afford the per-acre investment?
@@ -385,9 +398,12 @@ def get_recommendation(request: Request, data: FarmData, lang: str = "en"):
             suitable_soil = any(s in soil_type for s in c["soil"])
             if not suitable_soil: continue
             
-        # 3. Water Source Check (Soft match)
+        # 3. Water Source Check (Soft match with expanded keywords)
         if "water" in c:
-            suitable_water = any(w in water_source for w in c["water"])
+            suitable_water = any(
+                w in water_source or w.replace("_", " ") in water_source or w in expanded_water_keywords or any(token in w for token in expanded_water_keywords)
+                for w in c["water"]
+            )
             if not suitable_water: continue
             
         regional_crops.append(dict(c))
