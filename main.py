@@ -388,11 +388,11 @@ def get_recommendation(data: FarmData, lang: str = "en"):
             suitable_water = any(w in water_source for w in c["water"])
             if not suitable_water: continue
             
-        regional_crops.append(c)
+        regional_crops.append(dict(c))
 
     # If no crops fit perfectly, loosen the constraints to provide at least some advice
     if not regional_crops:
-        regional_crops = [c for c in all_potential_crops if c["investment"] <= budget_per_acre * 1.5][:2]
+        regional_crops = [dict(c) for c in all_potential_crops if c["investment"] <= budget_per_acre * 1.5][:2]
 
     # Final Fallback for extremely low budgets
     if not regional_crops:
@@ -402,7 +402,8 @@ def get_recommendation(data: FarmData, lang: str = "en"):
 
     # Format investment for display
     for c in regional_crops:
-        c["investment"] = f"{c['investment']:,}"
+        if isinstance(c.get("investment"), (int, float)):
+            c["investment"] = f"{int(c['investment']):,}"
 
 
     # 3. Fetch True Live Market Prices from Agmarknet (data.gov.in)
