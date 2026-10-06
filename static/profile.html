@@ -125,7 +125,7 @@
                 if (user.token) headers['Authorization'] = `Bearer ${user.token}`;
                 
                 // Fetch user profile
-                const profileRes = await fetch(`/api/user/profile/${user.email}`, { headers });
+                const profileRes = await fetch(`/api/user/profile/${encodeURIComponent(user.email)}`, { headers });
                 if (profileRes.ok) {
                     const profileData = await profileRes.json();
                     if (profileData.location) document.getElementById('farmLocation').innerText = profileData.location;
