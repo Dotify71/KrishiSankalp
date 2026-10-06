@@ -759,9 +759,10 @@ def delete_community_post(post_id: int, username: str = Depends(verify_admin)):
     db = SessionLocal()
     try:
         post = db.query(CommunityPost).filter(CommunityPost.id == post_id).first()
-        if post:
-            db.delete(post)
-            db.commit()
+        if not post:
+            raise HTTPException(status_code=404, detail="Post not found")
+        db.delete(post)
+        db.commit()
         return {"status": "success"}
     finally:
         db.close()
