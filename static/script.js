@@ -296,24 +296,127 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+const FALLBACK_LOCATIONS = {
+    states: [
+        {
+            state: "Andhra Pradesh",
+            districts: ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Nellore", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"]
+        },
+        {
+            state: "Assam",
+            districts: ["Baksa", "Barpeta", "Cachar", "Darrang", "Dhubri", "Dibrugarh", "Goalpara", "Golaghat", "Jorhat", "Kamrup", "Nagaon", "Sonitpur", "Tinsukia"]
+        },
+        {
+            state: "Bihar",
+            districts: ["Araria", "Aurangabad", "Begusarai", "Bhagalpur", "Bhojpur", "Darbhanga", "Gaya", "Katihar", "Madhubani", "Muzaffarpur", "Nalanda", "Patna", "Purnia", "Rohtas", "Samastipur", "Saran", "Vaishali"]
+        },
+        {
+            state: "Chhattisgarh",
+            districts: ["Bilaspur", "Dhamtari", "Durg", "Janjgir-Champa", "Kanker", "Kawardha", "Korba", "Mahasamund", "Raigarh", "Raipur", "Rajnandgaon"]
+        },
+        {
+            state: "Gujarat",
+            districts: ["Ahmedabad", "Amreli", "Anand", "Banaskantha", "Bharuch", "Bhavnagar", "Gandhinagar", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mehsana", "Navsari", "Patan", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Vadodara", "Valsad"]
+        },
+        {
+            state: "Haryana",
+            districts: ["Ambala", "Bhiwani", "Fatehabad", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"]
+        },
+        {
+            state: "Himachal Pradesh",
+            districts: ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Mandi", "Shimla", "Sirmaur", "Solan", "Una"]
+        },
+        {
+            state: "Jharkhand",
+            districts: ["Bokaro", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Giridih", "Hazaribagh", "Palamu", "Ranchi", "West Singhbhum"]
+        },
+        {
+            state: "Karnataka",
+            districts: ["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikkaballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada", "Davanagere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Yadgir"]
+        },
+        {
+            state: "Kerala",
+            districts: ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"]
+        },
+        {
+            state: "Madhya Pradesh",
+            districts: ["Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Chhatarpur", "Chhindwara", "Damoh", "Dewas", "Dhar", "Guna", "Gwalior", "Harda", "Hoshangabad", "Indore", "Jabalpur", "Khandwa", "Khargone", "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shivpuri", "Ujjain", "Vidisha"]
+        },
+        {
+            state: "Maharashtra",
+            districts: ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"]
+        },
+        {
+            state: "Odisha",
+            districts: ["Balangir", "Balasore", "Bargarh", "Bhadrak", "Cuttack", "Dhenkanal", "Ganjam", "Jajpur", "Jharsuguda", "Kalahandi", "Kendrapara", "Kendujhar", "Koraput", "Mayurbhanj", "Nayagarh", "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"]
+        },
+        {
+            state: "Punjab",
+            districts: ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Mansa", "Moga", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sahibzada Ajit Singh Nagar", "Sangrur", "Shahid Bhagat Singh Nagar", "Sri Muktsar Sahib", "Tarn Taran"]
+        },
+        {
+            state: "Rajasthan",
+            districts: ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"]
+        },
+        {
+            state: "Tamil Nadu",
+            districts: ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupathur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"]
+        },
+        {
+            state: "Telangana",
+            districts: ["Adilabad", "Bhadradri Kothagudem", "Hyderabad", "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Kumuram Bheem", "Mahabubabad", "Mahbubnagar", "Mancherial", "Medak", "Medchal-Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal", "Yadadri Bhuvanagiri"]
+        },
+        {
+            state: "Uttar Pradesh",
+            districts: ["Agra", "Aligarh", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Ayodhya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kushinagar", "Lakhimpur Kheri", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Prayagraj", "Raebareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur", "Shamli", "Shravasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"]
+        },
+        {
+            state: "Uttarakhand",
+            districts: ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"]
+        },
+        {
+            state: "West Bengal",
+            districts: ["Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda", "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur", "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"]
+        }
+    ]
+};
+
+async function loadLocations() {
+    try {
+        const locRes = await fetch('/locations.json');
+        if (!locRes.ok) {
+            throw new Error(`HTTP ${locRes.status}: Failed to load locations`);
+        }
+        const locData = await locRes.json();
+        if (!locData || !Array.isArray(locData.states) || locData.states.length === 0) {
+            throw new Error('Invalid locations format received');
+        }
+        return locData;
+    } catch (err) {
+        console.warn('Failed to load locations.json, falling back to agricultural districts list:', err);
+        return FALLBACK_LOCATIONS;
+    }
+}
+
     async function initSelects() {
         try {
-            const locRes = await fetch('/locations.json');
-            const locData = await locRes.json();
+            const locData = await loadLocations();
             window._rawLocationData = locData;
-            tomInstances['location'] = new TomSelect("#location", { create: true, sortField: { field: "text", direction: "asc" }, plugins: ['clear_button'] });
+            if (!tomInstances['location']) {
+                tomInstances['location'] = new TomSelect("#location", { create: true, sortField: { field: "text", direction: "asc" }, plugins: ['clear_button'] });
+            }
             renderLocationDropdown(savedLang);
-            tomInstances['soil']   = new TomSelect("#soil",   { create: false, plugins: ['clear_button'] });
-            tomInstances['season'] = new TomSelect("#season", { create: false, plugins: ['clear_button'] });
-            tomInstances['water']  = new TomSelect("#water",  { create: false, plugins: ['clear_button'] });
+            if (!tomInstances['soil']) tomInstances['soil'] = new TomSelect("#soil", { create: false, plugins: ['clear_button'] });
+            if (!tomInstances['season']) tomInstances['season'] = new TomSelect("#season", { create: false, plugins: ['clear_button'] });
+            if (!tomInstances['water']) tomInstances['water'] = new TomSelect("#water", { create: false, plugins: ['clear_button'] });
             Object.values(tomInstances).forEach(ts => ts.setValue('', true));
             applyLang(savedLang);
         } catch (e) { console.error("Initialization failed", e); }
     }
 
     function renderLocationDropdown(lang) {
-        const data = window._rawLocationData;
-        if (!data) return;
+        const data = window._rawLocationData || FALLBACK_LOCATIONS;
+        if (!data || !Array.isArray(data.states)) return;
         const ts = tomInstances['location'];
         const placeholder = lang === 'hi' ? 'स्थान खोजें या चुनें...' : 'Search or choose a location...';
         if (ts) {
