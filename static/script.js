@@ -306,7 +306,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             tomInstances['soil']   = new TomSelect("#soil",   { create: false, plugins: ['clear_button'] });
             tomInstances['season'] = new TomSelect("#season", { create: false, plugins: ['clear_button'] });
             tomInstances['water']  = new TomSelect("#water",  { create: false, plugins: ['clear_button'] });
-            Object.values(tomInstances).forEach(ts => ts.setValue('', true));
+            Object.values(tomInstances).forEach(ts => ts.clear());
             applyLang(savedLang);
         } catch (e) { console.error("Initialization failed", e); }
     }
@@ -357,7 +357,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     langToggle.addEventListener('change', (e) => applyLang(e.target.value));
     await initSelects();
+
+    const farmForm = document.getElementById('farmForm');
+    if (farmForm) {
+        farmForm.addEventListener('reset', () => {
+            Object.values(tomInstances).forEach(ts => {
+                if (ts && typeof ts.clear === 'function') {
+                    ts.clear();
+                }
+            });
+        });
+    }
 });
+
+window.resetFarmForm = function() {
+    const form = document.getElementById('farmForm');
+    if (form) form.reset();
+    Object.values(tomInstances).forEach(ts => {
+        if (ts && typeof ts.clear === 'function') {
+            ts.clear();
+        }
+    });
+};
 
 let recommendationCount = parseInt(localStorage.getItem('krishiRecCount') || '0');
 document.getElementById('farmForm').addEventListener('submit', async (e) => {
