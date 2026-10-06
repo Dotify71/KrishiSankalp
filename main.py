@@ -450,26 +450,47 @@ def get_recommendation(data: FarmData, lang: str = "en"):
             crop["price_kg"] = "Personal Use"
             crop["trend"] = "Stable"
 
+DEFAULT_INDIA_LAT = 20.5937
+DEFAULT_INDIA_LON = 78.9629
+
+def validate_coordinates(lat, lon):
+    """Validates geographic latitude and longitude within [-90, 90] and [-180, 180]."""
+    try:
+        if lat is None or lon is None:
+            return None, None
+        lat_val = float(lat)
+        lon_val = float(lon)
+        if -90.0 <= lat_val <= 90.0 and -180.0 <= lon_val <= 180.0:
+            return lat_val, lon_val
+        return None, None
+    except (ValueError, TypeError):
+        return None, None
+
     # Reset random seed
     random.seed()
 
     live_temp = f"Seasonal Avg ({temp})"
     live_hum = humidity
     live_desc = "Standard conditions"
-    lat, lon = data.lat, data.lon
+    lat, lon = validate_coordinates(data.lat, data.lon)
     
-    # If GPS not provided, fallback to city search
-    if not lat or not lon:
+    # If GPS not provided or invalid, fallback to city search
+    if lat is None or lon is None:
         try:
             w_url = f"https://api.openweathermap.org/data/2.5/weather?q={urllib.parse.quote_plus(data.location)}&appid={WEATHER_API_KEY}&units=metric"
             w_res = requests.get(w_url, timeout=2)
             if w_res.status_code == 200:
                 w_data = w_res.json()
-                lat = w_data['coord']['lat']
-                lon = w_data['coord']['lon']
-        except: pass
+                if 'coord' in w_data:
+                    lat, lon = validate_coordinates(w_data['coord'].get('lat'), w_data['coord'].get('lon'))
+        except Exception:
+            pass
     
-    if lat and lon:
+    # Final fallback to default India coordinates if still invalid or unresolved
+    if lat is None or lon is None:
+        lat, lon = DEFAULT_INDIA_LAT, DEFAULT_INDIA_LON
+    
+    if lat is not None and lon is not None:
         try:
             w_url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={WEATHER_API_KEY}&units=metric"
             w_res = requests.get(w_url, timeout=2)
@@ -478,18 +499,20 @@ def get_recommendation(data: FarmData, lang: str = "en"):
                 live_temp = f"{w_data['main']['temp']}°C"
                 live_hum = f"{w_data['main']['humidity']}%"
                 live_desc = w_data['weather'][0]['description'].capitalize()
-                lat = w_data['coord']['lat']
-                lon = w_data['coord']['lon']
+                if 'coord' in w_data:
+                    new_lat, new_lon = validate_coordinates(w_data['coord'].get('lat'), w_data['coord'].get('lon'))
+                    if new_lat is not None and new_lon is not None:
+                        lat, lon = new_lat, new_lon
                 if w_data['main']['temp'] > 40:
                     live_desc += " ⚠️ Extreme Heat Alert"
                 elif w_data['main']['temp'] < 5:
                     live_desc += " ⚠️ Frost Warning"
-        except:
+        except Exception:
             pass
 
     # --- 5. Global Soil Intelligence (SoilGrids API) ---
     soil_insight = "Regional standard soil"
-    if lat and lon:
+    if lat is not None and lon is not None:
         try:
             # Fetch soil properties at 0-5cm depth
             s_url = f"https://rest.isric.org/soilgrids/v2.0/properties/query?lon={lon}&lat={lat}&property=clay&property=sand&property=silt&depth=0-5cm&value=mean"
