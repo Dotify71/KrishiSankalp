@@ -51,12 +51,12 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 security_bearer = HTTPBearer()
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 def verify_google_token(credentials: HTTPAuthorizationCredentials = Depends(security_bearer)):
     token = credentials.credentials
     try:
-        # Note: In production you should pass the CLIENT_ID to audience. Here we verify the signature and expiry.
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request())
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), audience=GOOGLE_CLIENT_ID)
         return idinfo
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
