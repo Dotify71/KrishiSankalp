@@ -276,7 +276,8 @@ class UserSync(BaseModel):
 
 # --- 3. API Endpoints ---
 @app.post("/recommend")
-def get_recommendation(data: FarmData, lang: str = "en"):
+@limiter.limit("15/minute")
+def get_recommendation(request: Request, data: FarmData, lang: str = "en"):
     # A. Save the incoming search query to the database
     db = SessionLocal()
     try:
