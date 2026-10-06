@@ -83,8 +83,8 @@ def keep_alive_ping():
         time.sleep(600)
 
 def seed_db():
+    db = SessionLocal()
     try:
-        db = SessionLocal()
         if db.query(CommunityPost).count() == 0:
             logger.info("Seeding community database with default stories...")
             seeds = [
@@ -113,9 +113,10 @@ def seed_db():
             )
             db.add(demo_demand)
             db.commit()
-        db.close()
     except Exception as e:
         logger.error(f"Seeding failed: {e}")
+    finally:
+        db.close()
 
 
 
@@ -278,20 +279,23 @@ class UserSync(BaseModel):
 def get_recommendation(data: FarmData, lang: str = "en"):
     # A. Save the incoming search query to the database
     db = SessionLocal()
-    db_query = FarmQuery(
-        location=data.location,
-        soil=data.soil,
-        season=data.season,
-        water=data.water,
-        farm_size=data.farmSize,
-        budget=data.budget,
-        lat=data.lat,
-        lon=data.lon
-    )
-    db.add(db_query)
-    db.commit()
-    db.refresh(db_query)
-    db.close()
+    try:
+        db_query = FarmQuery(
+            location=data.location,
+            soil=data.soil,
+            season=data.season,
+            water=data.water,
+            farm_size=data.farmSize,
+            budget=data.budget,
+            lat=data.lat,
+            lon=data.lon
+        )
+        db.add(db_query)
+        db.commit()
+        db.refresh(db_query)
+        query_id = db_query.id
+    finally:
+        db.close()
 
     logger.info(f"Processing recommendation for {data.location} | Season: {data.season}")
 
@@ -648,7 +652,7 @@ def get_recommendation(data: FarmData, lang: str = "en"):
         },
         "yield": ndvi_data,
         "schemes": schemes,
-        "query_id": db_query.id
+        "query_id": query_id
     }
     return translate_dict(response_data, lang)
 
@@ -657,60 +661,63 @@ def sync_user(data: UserSync, token_data: dict = Depends(verify_google_token)):
     if token_data.get('email') != data.email:
         raise HTTPException(status_code=403, detail="Not authorized to sync this user")
     db = SessionLocal()
-    db_user = db.query(User).filter(User.email == data.email).first()
-    
-    if not db_user:
-        db_user = User(email=data.email)
-        db.add(db_user)
-    
-    db_user.name = data.name
-    if data.picture: db_user.picture = data.picture
-    if data.location: db_user.location = data.location
-    if data.soil: db_user.soil = data.soil
-    if data.season: db_user.season = data.season
-    if data.water: db_user.water = data.water
-    if data.farmSize is not None: db_user.farm_size = data.farmSize
-    if data.budget is not None: db_user.budget = data.budget
-    db_user.last_login = datetime.datetime.utcnow()
-    
-    db.commit()
-    db.refresh(db_user)
-    
-    # Return everything for frontend to sync back
-    response_data = {
-        "email": db_user.email,
-        "name": db_user.name,
-        "picture": db_user.picture,
-        "location": db_user.location,
-        "soil": db_user.soil,
-        "season": db_user.season,
-        "water": db_user.water,
-        "farmSize": db_user.farm_size,
-        "budget": db_user.budget
-    }
-    db.close()
-    return response_data
+    try:
+        db_user = db.query(User).filter(User.email == data.email).first()
+        
+        if not db_user:
+            db_user = User(email=data.email)
+            db.add(db_user)
+        
+        db_user.name = data.name
+        if data.picture: db_user.picture = data.picture
+        if data.location: db_user.location = data.location
+        if data.soil: db_user.soil = data.soil
+        if data.season: db_user.season = data.season
+        if data.water: db_user.water = data.water
+        if data.farmSize is not None: db_user.farm_size = data.farmSize
+        if data.budget is not None: db_user.budget = data.budget
+        db_user.last_login = datetime.datetime.utcnow()
+        
+        db.commit()
+        db.refresh(db_user)
+        
+        # Return everything for frontend to sync back
+        return {
+            "email": db_user.email,
+            "name": db_user.name,
+            "picture": db_user.picture,
+            "location": db_user.location,
+            "soil": db_user.soil,
+            "season": db_user.season,
+            "water": db_user.water,
+            "farmSize": db_user.farm_size,
+            "budget": db_user.budget
+        }
+    finally:
+        db.close()
 
 @app.get("/api/user/profile/{email}")
 def get_user_profile(email: str, token_data: dict = Depends(verify_google_token)):
     if token_data.get('email') != email:
         raise HTTPException(status_code=403, detail="Not authorized to access this profile")
     db = SessionLocal()
-    db_user = db.query(User).filter(User.email == email).first()
-    db.close()
-    if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return {
-        "email": db_user.email,
-        "name": db_user.name,
-        "picture": db_user.picture,
-        "location": db_user.location,
-        "soil": db_user.soil,
-        "season": db_user.season,
-        "water": db_user.water,
-        "farmSize": db_user.farm_size,
-        "budget": db_user.budget
-    }
+    try:
+        db_user = db.query(User).filter(User.email == email).first()
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return {
+            "email": db_user.email,
+            "name": db_user.name,
+            "picture": db_user.picture,
+            "location": db_user.location,
+            "soil": db_user.soil,
+            "season": db_user.season,
+            "water": db_user.water,
+            "farmSize": db_user.farm_size,
+            "budget": db_user.budget
+        }
+    finally:
+        db.close()
 
 @app.get("/api/stats")
 def get_public_stats():
@@ -1032,9 +1039,11 @@ def get_admin_page(username: str = Depends(verify_admin)):
 @app.get("/api/community")
 def get_community_posts(limit: int = 10):
     db = SessionLocal()
-    posts = db.query(CommunityPost).order_by(CommunityPost.timestamp.desc()).limit(limit).all()
-    db.close()
-    return posts
+    try:
+        posts = db.query(CommunityPost).order_by(CommunityPost.timestamp.desc()).limit(limit).all()
+        return posts
+    finally:
+        db.close()
 
 class PostCreate(BaseModel):
     author: str
@@ -1046,18 +1055,20 @@ class PostCreate(BaseModel):
 @app.post("/api/community")
 def add_community_post(post: PostCreate):
     db = SessionLocal()
-    db_post = CommunityPost(
-        author=html.escape(post.author.strip()),
-        location=html.escape(post.location.strip()),
-        content=html.escape(post.content.strip()),
-        tag=html.escape(post.tag.strip()),
-        image_data=post.image
-    )
-    db.add(db_post)
-    db.commit()
-    db.refresh(db_post)
-    db.close()
-    return db_post
+    try:
+        db_post = CommunityPost(
+            author=html.escape(post.author.strip()),
+            location=html.escape(post.location.strip()),
+            content=html.escape(post.content.strip()),
+            tag=html.escape(post.tag.strip()),
+            image_data=post.image
+        )
+        db.add(db_post)
+        db.commit()
+        db.refresh(db_post)
+        return db_post
+    finally:
+        db.close()
 
 @app.post("/api/diagnose")
 @limiter.limit("5/minute")
@@ -1197,67 +1208,75 @@ class MarketOrder(BaseModel):
 @app.post("/api/marketplace/list")
 def create_listing(listing: MarketListing):
     db = SessionLocal()
-    effective_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
-    db_listing = DBMarketListing(
-        crop_name=listing.crop_name,
-        quantity=listing.quantity,
-        expected_price=effective_price
-    )
-    db.add(db_listing)
-    db.commit()
-    db.refresh(db_listing)
-    db.close()
-    return {"status": "success"}
+    try:
+        effective_price = listing.expected_price if listing.expected_price is not None else (listing.price or 0.0)
+        db_listing = DBMarketListing(
+            crop_name=listing.crop_name,
+            quantity=listing.quantity,
+            expected_price=effective_price
+        )
+        db.add(db_listing)
+        db.commit()
+        db.refresh(db_listing)
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/marketplace/listings")
 def get_listings():
     db = SessionLocal()
-    listings = db.query(DBMarketListing).order_by(DBMarketListing.created_at.desc()).all()
-    db.close()
-    result = [
-        {
-            "crop_name": l.crop_name,
-            "quantity": l.quantity,
-            "expected_price": l.expected_price
-        }
-        for l in listings
-    ]
-    return {"status": "success", "data": result}
+    try:
+        listings = db.query(DBMarketListing).order_by(DBMarketListing.created_at.desc()).all()
+        result = [
+            {
+                "crop_name": l.crop_name,
+                "quantity": l.quantity,
+                "expected_price": l.expected_price
+            }
+            for l in listings
+        ]
+        return {"status": "success", "data": result}
+    finally:
+        db.close()
 
 @app.post("/api/marketplace/order")
 def create_order(order: MarketOrder):
     db = SessionLocal()
-    db_order = DBMarketOrder(
-        order_id=order.order_id,
-        buyer_name=order.buyer_name,
-        crop_name=order.crop_name,
-        quantity=order.quantity,
-        price=order.price,
-        transport_cost=order.transport_cost
-    )
-    db.add(db_order)
-    db.commit()
-    db.refresh(db_order)
-    db.close()
-    return {"status": "success"}
+    try:
+        db_order = DBMarketOrder(
+            order_id=order.order_id,
+            buyer_name=order.buyer_name,
+            crop_name=order.crop_name,
+            quantity=order.quantity,
+            price=order.price,
+            transport_cost=order.transport_cost
+        )
+        db.add(db_order)
+        db.commit()
+        db.refresh(db_order)
+        return {"status": "success"}
+    finally:
+        db.close()
 
 @app.get("/api/marketplace/orders")
 def get_orders():
     db = SessionLocal()
-    orders = db.query(DBMarketOrder).order_by(DBMarketOrder.created_at.desc()).all()
-    db.close()
-    result = [
-        {
-            "order_id": o.order_id,
-            "buyer_name": o.buyer_name,
-            "crop_name": o.crop_name,
-            "quantity": o.quantity,
-            "price": o.price,
-            "transport_cost": o.transport_cost
-        }
-        for o in orders
-    ]
-    return {"status": "success", "data": result}
+    try:
+        orders = db.query(DBMarketOrder).order_by(DBMarketOrder.created_at.desc()).all()
+        result = [
+            {
+                "order_id": o.order_id,
+                "buyer_name": o.buyer_name,
+                "crop_name": o.crop_name,
+                "quantity": o.quantity,
+                "price": o.price,
+                "transport_cost": o.transport_cost
+            }
+            for o in orders
+        ]
+        return {"status": "success", "data": result}
+    finally:
+        db.close()
 
 
 @app.post("/api/marketplace/demands")
